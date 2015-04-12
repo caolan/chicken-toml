@@ -32,8 +32,17 @@
 
 (test-group "multi-line basic strings"
   (test "multi-line basic string"
-        '((str1 . "Roses are red\nViolets are blue"))
-        (read-toml "str1 = \"\"\"\nRoses are red\nViolets are blue\"\"\"\n"))
+        '((str . "Roses are red\nViolets are blue"))
+        (read-toml "str = \"\"\"\nRoses are red\nViolets are blue\"\"\"\n"))
+  (test "trimmed whitespace"
+        '((str . "The quick brown fox jumps over the lazy dog."))
+        (read-toml
+          (string-append
+            "str = \"\"\"\\\n"
+            "       The quick brown \\\n"
+            "       fox jumps over \\\n"
+            "       the lazy dog.\\\n"
+            "       \"\"\"")))
 
   )
 

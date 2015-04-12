@@ -79,10 +79,15 @@
     (as-string (one-or-more char))
     (is #\")))
 
+(define escaped-whitespace
+  (bind (preceded-by (is #\\) toml-newline (zero-or-more toml-whitespace))
+        (lambda (x) (result ""))))
+
 (define multi-line-basic-string
   (enclosed-by
     (sequence (char-seq "\"\"\"") (maybe toml-newline))
-    (as-string (one-or-more (any-of char (in char-set:whitespace))))
+    (as-string
+      (one-or-more (any-of char (in char-set:whitespace) escaped-whitespace)))
     (char-seq "\"\"\"")))
 
 (define ((as-symbol parser) input)
