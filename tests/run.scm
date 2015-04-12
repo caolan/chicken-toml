@@ -67,8 +67,19 @@
             "trimmed in raw strings.\n"
             "   All other whitespace\n"
             "   is preserved.\n"
-            "'''\n")))
-  )
+            "'''\n"))))
+
+(test-group "integers"
+  (test "integer"
+        '((int . 42)) (read-toml "int = 42"))
+  (test "preceding plus sign"
+        '((int . 99)) (read-toml "int = +99"))
+  (test "zero"
+        '((int . 0)) (read-toml "int = 0"))
+  (test "negative"
+        '((int . -17)) (read-toml "int = -17"))
+  (test "underscores"
+        '((int 5349221)) (read-toml "int = 5_349_221")))
 
 ;(test-group "example"
 ;  (test (read-json example-json)
