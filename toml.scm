@@ -79,6 +79,12 @@
     (as-string (one-or-more char))
     (is #\")))
 
+(define multi-line-basic-string
+  (enclosed-by
+    (sequence (char-seq "\"\"\"") (maybe toml-newline))
+    (as-string (one-or-more (any-of char (in char-set:whitespace))))
+    (char-seq "\"\"\"")))
+
 (define ((as-symbol parser) input)
   (and-let* ((result+remainder ((as-string parser) input)))
     (cons (string->symbol (car result+remainder))
@@ -93,7 +99,8 @@
   (as-symbol (one-or-more (in char-set:graphic))))
 
 (define value
-  (any-of basic-string))
+  (any-of basic-string
+          multi-line-basic-string))
 
 (define whitespaces
   (one-or-more toml-whitespace))

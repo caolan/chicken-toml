@@ -13,7 +13,7 @@
 (test-group "blank lines"
   (test '() (read-toml "\r\n\n")))
 
-(test-group "strings"
+(test-group "basic strings"
   (test "basic string"
         '((str . "I'm a string"))
         (read-toml "str = \"I'm a string\"\n"))
@@ -28,11 +28,13 @@
         (read-toml "str = \"escaped \\t tab\"\n"))
   (test "basic string with unicode"
         '((str . "Name: José"))
-        (read-toml "str = \"Name: Jos\\u00E9\"\n"))
-        ;(test "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
+        (read-toml "str = \"Name: Jos\\u00E9\"\n")))
 
-  ;(test "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
-  ;      (read-toml "\"I'm a string. \\\"You can quote me\\\". Name\\tJos\\u00E9\\nLocation\\tSF.\""))
+(test-group "multi-line basic strings"
+  (test "multi-line basic string"
+        '((str1 . "Roses are red\nViolets are blue"))
+        (read-toml "str1 = \"\"\"\nRoses are red\nViolets are blue\"\"\"\n"))
+
   )
 
 ;(test-group "example"
