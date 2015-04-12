@@ -90,6 +90,20 @@
       (one-or-more (any-of char (in char-set:whitespace) escaped-whitespace)))
     (char-seq "\"\"\"")))
 
+(define literal-string
+  (enclosed-by
+    (is #\')
+    (as-string
+      (one-or-more
+        (none-of* (is #\') (in char-set:graphic-and-blank))))
+    (is #\')))
+
+(define multi-line-literal-string
+  (enclosed-by
+    (sequence (char-seq "'''") (maybe toml-newline))
+    (as-string (one-or-more (none-of* (char-seq "'''") (in char-set:printing))))
+    (char-seq "'''")))
+
 (define ((as-symbol parser) input)
   (and-let* ((result+remainder ((as-string parser) input)))
     (cons (string->symbol (car result+remainder))
@@ -105,7 +119,9 @@
 
 (define value
   (any-of basic-string
-          multi-line-basic-string))
+          multi-line-basic-string
+          literal-string
+          multi-line-literal-string))
 
 (define whitespaces
   (one-or-more toml-whitespace))

@@ -42,8 +42,32 @@
             "       The quick brown \\\n"
             "       fox jumps over \\\n"
             "       the lazy dog.\\\n"
-            "       \"\"\"")))
+            "       \"\"\""))))
 
+(test-group "literal strings"
+  (test "literal string"
+        '((winpath . "C:\\Users\\nodejs\\templates"))
+        (read-toml "winpath = 'C:\\Users\\nodejs\\templates'"))
+  (test "literal string with double quotes"
+        '((quoted . "Tom \"Dubs\" Preston-Werner"))
+        (read-toml "quoted = 'Tom \"Dubs\" Preston-Werner'\n"))
+  (test "multi-line regex example"
+        '((regex2 . "I [dw]on't need \\d{2} apples"))
+        (read-toml "regex2 = '''I [dw]on't need \\d{2} apples'''"))
+  (test "multi-line lines example"
+        `((lines . ,(string-append
+                      "The first newline is\n"
+                      "trimmed in raw strings.\n"
+                      "   All other whitespace\n"
+                      "   is preserved.\n")))
+        (read-toml
+          (string-append
+            "lines = '''\n"
+            "The first newline is\n"
+            "trimmed in raw strings.\n"
+            "   All other whitespace\n"
+            "   is preserved.\n"
+            "'''\n")))
   )
 
 ;(test-group "example"
