@@ -55,12 +55,17 @@
   (one-or-more toml-whitespace))
 
 (define key-value
-  (as-pair key (preceded-by whitespaces (is #\=) whitespaces value)))
+  (as-pair key
+    (enclosed-by (sequence whitespaces (is #\=) whitespaces)
+                 value
+                 line-end)))
 
 (define document
-  (zero-or-more
-    (none-of* comment
-              blank-line
-              (any-of key-value))))
+  (followed-by
+    (zero-or-more
+      (none-of* comment
+                blank-line
+                (any-of key-value)))
+    end-of-input))
 
 )

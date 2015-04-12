@@ -14,8 +14,16 @@
   (test '() (read-toml "\r\n\n")))
 
 (test-group "strings"
-  (test '((str . "I'm a string"))
+  (test "basic string"
+        '((str . "I'm a string"))
         (read-toml "str = \"I'm a string\"\n"))
+  (test "basic string no newline"
+        '((str . "I'm a string"))
+        (read-toml "str = \"I'm a string\""))
+  (test "basic string escaped double quote"
+        '((str . "escaped \" double quote"))
+        (read-toml "str = \"escaped \\\" double quote\"\n"))
+
   ;(test "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
   ;      (read-toml "\"I'm a string. \\\"You can quote me\\\". Name\\tJos\\u00E9\\nLocation\\tSF.\""))
   )
