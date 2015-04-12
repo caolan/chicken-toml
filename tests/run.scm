@@ -23,6 +23,13 @@
   (test "basic string escaped double quote"
         '((str . "escaped \" double quote"))
         (read-toml "str = \"escaped \\\" double quote\"\n"))
+  (test "basic string escaped tab character"
+        '((str . "escaped \t tab"))
+        (read-toml "str = \"escaped \\t tab\"\n"))
+  (test "basic string with unicode"
+        '((str . "Name: José"))
+        (read-toml "str = \"Name: Jos\\u00E9\"\n"))
+        ;(test "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
 
   ;(test "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
   ;      (read-toml "\"I'm a string. \\\"You can quote me\\\". Name\\tJos\\u00E9\\nLocation\\tSF.\""))

@@ -54,9 +54,24 @@
               ((#\") #\")
               ((#\\) #\\))))))
 
+(define (unicode-scalar-value? code)
+  (or (<= 0 code #xD7FF)
+      (<= #xE000 code #x10FFFF)))
+
+(define unicode
+  (bind
+    (any-of
+      (preceded-by (is #\u) (as-string (repeated (in char-set:hex-digit) 4)))
+      (preceded-by (is #\U) (as-string (repeated (in char-set:hex-digit) 8))))
+    (lambda (x)
+      (let ((code (string->number x 16)))
+        (if (unicode-scalar-value? code)
+          (result (##sys#char->utf8-string (integer->char code)))
+          fail)))))
+
 (define char
   (any-of (none-of* (is #\") (is #\\) (in char-set:graphic-and-blank))
-          (preceded-by (is #\\) escape)))
+          (preceded-by (is #\\) (any-of escape unicode))))
 
 (define basic-string
   (enclosed-by
