@@ -1,7 +1,7 @@
 (module toml (read-toml)
 
 (import scheme chicken)
-(use comparse srfi-14)
+(use comparse srfi-14 extras)
 
 (define (read-toml input)
   (parse document (->parser-input input)))
@@ -26,13 +26,42 @@
 (define comment
   (preceded-by (is #\#) (zero-or-more (none-of* toml-newline item))))
 
+;; TOML string escape sequences
+;;
+;; \b         - backspace       (U+0008)
+;; \t         - tab             (U+0009)
+;; \n         - linefeed        (U+000A)
+;; \f         - form feed       (U+000C)
+;; \r         - carriage return (U+000D)
+;; \"         - quote           (U+0022)
+;; \\         - backslash       (U+005C)
+;; \uXXXX     - unicode         (U+XXXX)
+;; \UXXXXXXXX - unicode         (U+XXXXXXXX)
+
+(define char-set:toml-escape
+  (string->char-set "btnfr\"\\"))
+
+(define escape
+  (bind (in char-set:toml-escape)
+        (lambda (x)
+          (result
+            (case x
+              ((#\b) #\backspace)
+              ((#\t) #\tab)
+              ((#\n) #\newline)
+              ((#\f) #\page)
+              ((#\r) #\return)
+              ((#\") #\")
+              ((#\\) #\\))))))
+
+(define char
+  (any-of (none-of* (is #\") (is #\\) (in char-set:graphic-and-blank))
+          (preceded-by (is #\\) escape)))
+
 (define basic-string
   (enclosed-by
     (is #\")
-    (as-string
-      (one-or-more
-        (none-of* (is #\")
-          (in char-set:graphic-and-blank))))
+    (as-string (one-or-more char))
     (is #\")))
 
 (define ((as-symbol parser) input)
