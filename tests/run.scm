@@ -106,6 +106,12 @@
         '((flt . 1e100))
         (read-toml "flt = 1e1_00")))
 
+(test-group "boolean"
+  (test "true"
+        '((bool . #t)) (read-toml "bool = true"))
+  (test "false"
+        '((bool . #f)) (read-toml "bool = false")))
+
 ;(test-group "example"
 ;  (test (read-json example-json)
 ;        (read-toml example-toml))

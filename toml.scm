@@ -401,6 +401,20 @@
       (let ((n (string->number (string-delete #\_ x))))
         (if n (result n) fail)))))
 
+; Boolean
+; -------
+;
+; Booleans are just the tokens you're used to. Always lowercase.
+;
+; ```toml
+; bool1 = true
+; bool2 = false
+; ```
+
+(define boolean
+  (bind (any-of (char-seq "true") (char-seq "false"))
+        (lambda (x) (result (string=? x "true")))))
+
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
 
@@ -410,7 +424,8 @@
           literal-string
           multi-line-literal-string
           float
-          integer))
+          integer
+          boolean))
 
 (define key-value
   (as-pair key
