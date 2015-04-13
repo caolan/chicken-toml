@@ -123,6 +123,27 @@
         `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60))))
         (read-toml "date = 1979-05-27T07:32:00.999999-07:00")))
 
+(test-group "array"
+  (test "array of integers"
+        '((arr . #(1 2 3)))
+        (read-toml "arr = [ 1, 2, 3 ]"))
+  (test "array of strings"
+        '((arr . #("red" "yellow" "green")))
+        (read-toml "arr = [ \"red\", \"yellow\", \"green\" ]"))
+  (test "array of arrays"
+        '((arr . #(#(1 2) #(3 4 5))))
+        (read-toml "arr = [ [ 1, 2 ], [3, 4, 5] ]"))
+  (test "multiple types of string definition"
+        '((arr . #("all" "strings" "are the same" "type")))
+        (read-toml "arr = [ \"all\", 'strings', \"\"\"are the same\"\"\", '''type''']"))
+  (test "array of arrays of different types allowed"
+        '((arr . #(#(1 2) #("a" "b" "c"))))
+        (read-toml "arr = [ [ 1, 2 ], [\"a\", \"b\", \"c\"] ]"))
+  (test "array of different types not allowed"
+        #f
+        (read-toml "arr = [ 1, 2.0 ]"))
+  )
+
 ;(test-group "example"
 ;  (test (read-json example-json)
 ;        (read-toml example-toml))

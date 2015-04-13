@@ -60,7 +60,7 @@
 (module toml (read-toml)
 
 (import scheme chicken)
-(use comparse srfi-13 srfi-14 rfc3339)
+(use comparse srfi-1 srfi-13 srfi-14 rfc3339)
 
 ;; Some convenience functions for our implementation:
 
@@ -447,6 +447,70 @@
       (let ((t (string->rfc3339 x)))
         (if x (result t) fail)))))
 
+; Array
+; -----
+;
+; Arrays are square brackets with other primitives inside. Whitespace is ignored.
+; Elements are separated by commas. Data types may not be mixed (though all string
+; types should be considered the same type).
+;
+; ```toml
+; arr1 = [ 1, 2, 3 ]
+; arr2 = [ "red", "yellow", "green" ]
+; arr3 = [ [ 1, 2 ], [3, 4, 5] ]
+; arr4 = [ "all", 'strings', """are the same""", '''type'''] # this is ok
+; arr5 = [ [ 1, 2 ], ["a", "b", "c"] ] # this is ok
+; arr6 = [ 1, 2.0 ] # note: this is NOT ok
+; ```
+;
+; Arrays can also be multiline. So in addition to ignoring whitespace, arrays also
+; ignore newlines between the brackets. Terminating commas are ok before the
+; closing bracket.
+;
+; ```toml
+; arr7 = [
+;   1, 2, 3
+; ]
+;
+; arr8 = [
+;   1,
+;   2, # this is ok
+; ]
+; ```
+
+(define (toml-type v)
+  (cond
+    ((string? v) 'string)
+    ((number? v) (if (and (exact? v) (integer? v)) 'integer 'float))
+    ((boolean? v) 'boolean)
+    ((vector? v) 'array)
+    ((list? v) 'table)))
+
+(define (same-types? lst)
+  (or (null? lst)
+      (let ((type (toml-type (car lst))))
+        (every (lambda (v) (eq? type (toml-type v)))
+               (cdr lst)))))
+
+(define array
+  (recursive-parser
+    (bind
+      (enclosed-by
+        (sequence (is #\[) (maybe whitespaces))
+        (zero-or-more
+          (sequence
+            value ;; first value
+            (zero-or-more
+              (preceded-by
+                (maybe whitespaces) (is #\,) (maybe whitespaces)
+                value))))
+        (sequence (maybe whitespaces) (is #\])))
+      (lambda (x)
+        (let ((arr (cons (caar x) (cadar x))))
+          (if (same-types? arr)
+            (result (list->vector arr))
+            fail))))))
+
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
 
@@ -458,7 +522,8 @@
           float
           date
           integer
-          boolean))
+          boolean
+          array))
 
 (define key-value
   (as-pair key
