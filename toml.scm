@@ -115,7 +115,9 @@
 ; ```
 
 (define comment
-  (preceded-by (is #\#) (zero-or-more (none-of* toml-newline item))))
+  (preceded-by (is #\#)
+               (zero-or-more (none-of* toml-newline item))
+               line-end))
 
 ; String
 ; ------
@@ -357,11 +359,9 @@
   (sequence (zero-or-more toml-whitespace) toml-newline))
 
 (define document
-  (followed-by
-    (zero-or-more
-      (none-of* comment
-                blank-line
-                (any-of key-value)))
-    end-of-input))
+  (enclosed-by
+    (zero-or-more (any-of comment blank-line)) ;; ignore these
+    (zero-or-more (any-of key-value)) ;; match these
+    end-of-input)) ;; make sure we matched the whole document
 
 )
