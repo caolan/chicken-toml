@@ -62,9 +62,6 @@
 (import scheme chicken)
 (use comparse srfi-13 srfi-14)
 
-(define (read-toml input)
-  (parse document (->parser-input input)))
-
 ;; Some convenience functions for our implementation:
 
 ;; returns parser result as a symbol
@@ -73,7 +70,7 @@
     (cons (string->symbol (car result+remainder))
           (cdr result+remainder))))
 
-;; returns result of two sequential parser results as a pair
+;; returns two sequential parser results as a pair
 (define ((as-pair parse1 parse2) input)
   (and-let* ((a (parse1 input))
              (b (parse2 (cdr a))))
@@ -102,7 +99,6 @@
   (sequence
     (zero-or-more toml-whitespace) ;; allow trailing whitespace
     (any-of toml-newline end-of-input))) ;; allow missing newline at EOF
-
 
 ; Comment
 ; -------
@@ -345,7 +341,65 @@
       (sequence (maybe (in '(#\- #\+)))
                 (one-or-more (any-of (in char-set:digit) (is #\_)))))
     (lambda (x)
-      (result (string->number (string-delete #\_ x))))))
+      (let ((n (string->number (string-delete #\_ x))))
+        (if n (result n) fail)))))
+
+; Float
+; -----
+;
+; A float consists of an integer part (which may be prefixed with a plus or minus
+; sign) followed by a fractional part and/or an exponent part. If both a
+; fractional part and exponent part are present, the fractional part must precede
+; the exponent part.
+;
+; ```toml
+; # fractional
+; flt1 = +1.0
+; flt2 = 3.1415
+; flt3 = -0.01
+;
+; # exponent
+; flt4 = 5e+22
+; flt5 = 1e6
+; flt6 = -2E-2
+;
+; # both
+; flt7 = 6.626e-34
+; ```
+; A fractional part is a decimal point followed by one or more digits.
+;
+; An exponent part is an E (upper or lower case) followed by an integer part
+; (which may be prefixed with a plus or minus sign).
+;
+; Similar to integers, you may use underscores to enhance readability. Each
+; underscore must be surrounded by at least one digit.
+;
+; ```toml
+; flt8 = 9_224_617.445_991_228_313
+; flt9 = 1e1_000
+; ```
+;
+; 64-bit (double) precision expected.
+
+(define fractional
+  (sequence (is #\.)
+            (one-or-more (any-of (in char-set:digit) (is #\_)))))
+
+(define exponent
+  (sequence (any-of (is #\e) (is #\E))
+            (maybe (in '(#\- #\+)))
+            (one-or-more (any-of (in char-set:digit) (is #\_)))))
+
+(define float
+  (bind
+    (as-string
+      (sequence (maybe (in '(#\- #\+)))
+                (one-or-more (any-of (in char-set:digit) (is #\_)))
+                (any-of (sequence (maybe fractional) exponent)
+                        fractional)))
+    (lambda (x)
+      (let ((n (string->number (string-delete #\_ x))))
+        (if n (result n) fail)))))
 
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
@@ -355,6 +409,7 @@
           multi-line-basic-string
           literal-string
           multi-line-literal-string
+          float
           integer))
 
 (define key-value
@@ -371,5 +426,8 @@
     (zero-or-more (any-of comment blank-line)) ;; ignore these
     (zero-or-more (any-of key-value)) ;; match these
     end-of-input)) ;; make sure we matched the whole document
+
+(define (read-toml input)
+  (parse document (->parser-input input)))
 
 )

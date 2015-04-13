@@ -81,6 +81,31 @@
   (test "underscores"
         '((int . 5349221)) (read-toml "int = 5_349_221")))
 
+(test-group "floats"
+  (test "fractional"
+        '((flt . 3.1415)) (read-toml "flt = 3.1415"))
+  (test "fractional positive"
+        '((flt . 1.0)) (read-toml "flt = +1.0"))
+  (test "fractional negative"
+        '((flt . -0.01)) (read-toml "flt = -0.01"))
+  (test "exponent"
+        '((flt . 1e6)) (read-toml "flt = 1e6"))
+  (test "exponent positive"
+        '((flt . 5e+22)) (read-toml "flt = 5e+22"))
+  (test "exponent negative"
+        '((flt . -2E-2)) (read-toml "flt = -2E-2"))
+  (test "both"
+        '((flt . 6.626e-34)) (read-toml "flt = 6.626e-34"))
+  (test "underscores"
+        '((flt . 9224617.445991228313))
+        (read-toml "flt = 9_224_617.445_991_228_313"))
+  (test "underscores exponent"
+        ;; using e100 instead of e1000 since we'd have to import the
+        ;; 'numbers' module in the parser but the expected number range for
+        ;; TOML is only stated as 64bit signed long
+        '((flt . 1e100))
+        (read-toml "flt = 1e1_00")))
+
 ;(test-group "example"
 ;  (test (read-json example-json)
 ;        (read-toml example-toml))
