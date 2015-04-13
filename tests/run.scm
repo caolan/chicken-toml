@@ -2,7 +2,7 @@
 (import scheme)
 (import toml)
 
-(use test utils posix medea)
+(use test utils posix medea rfc3339)
 
 (define example-json (read-all "./tests/fixtures/example.json"))
 (define example-toml (read-all "./tests/fixtures/example.toml"))
@@ -111,6 +111,17 @@
         '((bool . #t)) (read-toml "bool = true"))
   (test "false"
         '((bool . #f)) (read-toml "bool = false")))
+
+(test-group "date"
+  (test "RFC3339 example 1"
+        `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 0)))
+        (read-toml "date = 1979-05-27T07:32:00Z"))
+  (test "RFC3339 example 2"
+        `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 (* 7 60 60))))
+        (read-toml "date = 1979-05-27T07:32:00-07:00"))
+  (test "RFC3339 example 3"
+        `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60))))
+        (read-toml "date = 1979-05-27T07:32:00.999999-07:00")))
 
 ;(test-group "example"
 ;  (test (read-json example-json)

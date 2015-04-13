@@ -60,7 +60,7 @@
 (module toml (read-toml)
 
 (import scheme chicken)
-(use comparse srfi-13 srfi-14)
+(use comparse srfi-13 srfi-14 rfc3339)
 
 ;; Some convenience functions for our implementation:
 
@@ -415,6 +415,38 @@
   (bind (any-of (char-seq "true") (char-seq "false"))
         (lambda (x) (result (string=? x "true")))))
 
+; Datetime
+; --------
+;
+; Datetimes are [RFC 3339](http://tools.ietf.org/html/rfc3339) dates.
+;
+; ```toml
+; date1 = 1979-05-27T07:32:00Z
+; date2 = 1979-05-27T00:32:00-07:00
+; date3 = 1979-05-27T00:32:00.999999-07:00
+; ```
+
+(define date
+  (bind
+    (as-string
+      (sequence
+        (repeated (in char-set:digit) 4) (is #\-)
+        (repeated (in char-set:digit) 2) (is #\-)
+        (repeated (in char-set:digit) 2) (is #\T)
+        (repeated (in char-set:digit) 2) (is #\:)
+        (repeated (in char-set:digit) 2) (is #\:)
+        (repeated (in char-set:digit) 2)
+        (any-of
+          (is #\Z)
+          (sequence
+            (maybe (sequence (is #\.) (one-or-more (in char-set:digit))))
+            (any-of (is #\+) (is #\-))
+            (repeated (in char-set:digit) 2) (is #\:)
+            (repeated (in char-set:digit) 2)))))
+    (lambda (x)
+      (let ((t (string->rfc3339 x)))
+        (if x (result t) fail)))))
+
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
 
@@ -424,6 +456,7 @@
           literal-string
           multi-line-literal-string
           float
+          date
           integer
           boolean))
 
