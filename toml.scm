@@ -60,7 +60,7 @@
 (module toml (read-toml)
 
 (import scheme chicken)
-(use comparse srfi-14 extras)
+(use comparse srfi-13 srfi-14)
 
 (define (read-toml input)
   (parse document (->parser-input input)))
@@ -339,6 +339,13 @@
 ; 64 bit (signed long) range expected (−9,223,372,036,854,775,808 to
 ; 9,223,372,036,854,775,807).
 
+(define integer
+  (bind
+    (as-string
+      (sequence (maybe (in '(#\- #\+)))
+                (one-or-more (any-of (in char-set:digit) (is #\_)))))
+    (lambda (x)
+      (result (string->number (string-delete #\_ x))))))
 
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
@@ -347,7 +354,8 @@
   (any-of basic-string
           multi-line-basic-string
           literal-string
-          multi-line-literal-string))
+          multi-line-literal-string
+          integer))
 
 (define key-value
   (as-pair key

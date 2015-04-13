@@ -79,7 +79,7 @@
   (test "negative"
         '((int . -17)) (read-toml "int = -17"))
   (test "underscores"
-        '((int 5349221)) (read-toml "int = 5_349_221")))
+        '((int . 5349221)) (read-toml "int = 5_349_221")))
 
 ;(test-group "example"
 ;  (test (read-json example-json)
