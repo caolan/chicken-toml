@@ -142,6 +142,12 @@
   (test "array of different types not allowed"
         #f
         (read-toml "arr = [ 1, 2.0 ]"))
+  (test "array over multiple lines"
+        '((arr . #(1 2 3)))
+        (read-toml "arr = [\n  1, 2, 3\n]"))
+  (test "array values over multiple lines with comment"
+        '((arr . #(1 2)))
+        (read-toml "arr = [\n  1,\n  2, # this is ok\n]"))
   )
 
 ;(test-group "example"
