@@ -60,7 +60,7 @@
 (module toml (read-toml)
 
 (import scheme chicken)
-(use comparse srfi-1 srfi-13 srfi-14 rfc3339)
+(use comparse srfi-1 srfi-13 srfi-14 rfc3339 extras)
 
 ;; Some convenience functions for our implementation:
 
@@ -90,16 +90,6 @@
 (define toml-newline
   (any-of (is #\newline) (char-seq "\r\n")))
 
-;; Some utility parsers built on these
-
-(define whitespaces
-  (one-or-more toml-whitespace))
-
-(define line-end
-  (sequence
-    (zero-or-more toml-whitespace) ;; allow trailing whitespace
-    (any-of toml-newline end-of-input))) ;; allow missing newline at EOF
-
 ; Comment
 ; -------
 ;
@@ -111,9 +101,20 @@
 ; ```
 
 (define comment
-  (preceded-by (maybe whitespaces)
+  (preceded-by (zero-or-more toml-whitespace)
                (is #\#)
                (zero-or-more (none-of* toml-newline item))))
+
+;; Some utility parsers
+
+(define whitespaces
+  (one-or-more toml-whitespace))
+
+(define line-end
+  (sequence
+    (maybe whitespaces) ;; allow trailing whitespace
+    (maybe comment) ;; allow comment at end of lines
+    (any-of toml-newline end-of-input))) ;; allow missing newline at EOF
 
 ; String
 ; ------
@@ -492,31 +493,51 @@
         (every (lambda (v) (eq? type (toml-type v)))
                (cdr lst)))))
 
-(define array-ignores
-  (any-of comment (in char-set:whitespace)))
+(define array-ignore
+  (zero-or-more (any-of comment (in char-set:whitespace))))
 
 (define array
   (recursive-parser
     (bind
       (enclosed-by
-        (sequence (is #\[) (zero-or-more array-ignores))
+        ;; opening
+        (sequence (is #\[) array-ignore)
+        ;; values
         (zero-or-more
           (sequence
             value ;; first value
             (zero-or-more
-              (preceded-by
-                (zero-or-more array-ignores) (is #\,)
-                (zero-or-more array-ignores)
-                value))))
-        (sequence (zero-or-more array-ignores)
+              (preceded-by array-ignore
+                           (is #\,)
+                           array-ignore
+                           ;; subsequent values
+                           value))))
+        ;; closing
+        (sequence array-ignore
                   ;; trailing comma
-                  (maybe (sequence (is #\,) (zero-or-more array-ignores)))
+                  (maybe (sequence (is #\,) array-ignore))
                   (is #\])))
       (lambda (x)
         (let ((arr (cons (caar x) (cadar x))))
           (if (same-types? arr)
             (result (list->vector arr))
             fail))))))
+
+; Table
+; -----
+;
+; Tables (also known as hash tables or dictionaries) are collections of key/value
+; pairs. They appear in square brackets on a line by themselves. You can tell them
+; apart from arrays because arrays are only ever values.
+;
+; ```toml
+; [table]
+; ```
+;
+; Under that, and until the next table or EOF are the key/values of that table.
+; Keys are on the left of the equals sign and values are on the right. Whitespace
+; is ignored around key names and values. The key, equals sign, and value must
+; be on the same line (though some values can be broken over multiple lines).
 
 (define key
   (as-symbol (one-or-more (in char-set:graphic))))
@@ -536,10 +557,21 @@
   (as-pair key
     (enclosed-by (sequence whitespaces (is #\=) whitespaces)
                  value
-                 (sequence
-                   (maybe whitespaces)
-                   (maybe comment)
-                   line-end))))
+                 line-end)))
+
+(define table
+  (bind
+    (sequence
+      (enclosed-by
+        (is #\[)
+        (as-symbol (one-or-more (none-of* (is #\]) (in char-set:graphic))))
+        (sequence (is #\]) line-end))
+      (zero-or-more key-value))
+    (lambda (x)
+      (printf "x: ~S~n" x)
+      (result (cons (car x) (cadr x))))))
+
+;; putting it all together
 
 (define blank-line
   (sequence (zero-or-more toml-whitespace) toml-newline))
@@ -547,7 +579,7 @@
 (define document
   (enclosed-by
     (zero-or-more (any-of comment blank-line)) ;; ignore these
-    (zero-or-more (any-of key-value)) ;; match these
+    (zero-or-more (any-of table key-value)) ;; match these
     end-of-input)) ;; make sure we matched the whole document
 
 (define (read-toml input)

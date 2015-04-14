@@ -114,13 +114,13 @@
         '((flt . 1e100))
         (read-toml "flt = 1e1_00")))
 
-(test-group "boolean"
+(test-group "booleans"
   (test "true"
         '((bool . #t)) (read-toml "bool = true"))
   (test "false"
         '((bool . #f)) (read-toml "bool = false")))
 
-(test-group "date"
+(test-group "dates"
   (test "RFC3339 example 1"
         `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 0)))
         (read-toml "date = 1979-05-27T07:32:00Z"))
@@ -131,7 +131,7 @@
         `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60))))
         (read-toml "date = 1979-05-27T07:32:00.999999-07:00")))
 
-(test-group "array"
+(test-group "arrays"
   (test "array of integers"
         '((arr . #(1 2 3)))
         (read-toml "arr = [ 1, 2, 3 ]"))
@@ -158,7 +158,21 @@
         (read-toml "arr = [\n  1,\n  2,\n]"))
   (test "array values over multiple lines with comment"
         '((arr . #(1 2)))
-        (read-toml "arr = [\n  1,\n  2 # this is a comment\n]"))
+        (read-toml "arr = [\n  1,\n  2 # this is a comment\n]")))
+
+(test-group "tables"
+  (test "empty table"
+        '((table . ()))
+        (read-toml "[table]\n"))
+  (test "table with single key-value"
+        '((table . ((key . "value"))))
+        (read-toml "[table]\nkey = 'value'"))
+  (test "table with multiple key-values"
+        '((table . ((foo . 123) (bar . 456))))
+        (read-toml "[table]\nfoo = 123\nbar = 456\n"))
+  (test "table with quoted keys in key-value pairs"
+        '((table . ((|my key| . "my value"))))
+        (read-toml "[table]\n\"my key\" = \"my value\"\n"))
   )
 
 ;(test-group "example"
