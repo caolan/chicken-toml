@@ -539,8 +539,14 @@
 ; is ignored around key names and values. The key, equals sign, and value must
 ; be on the same line (though some values can be broken over multiple lines).
 
-(define key
-  (as-symbol (one-or-more (in char-set:graphic))))
+(define bare-key
+  (as-symbol
+    (one-or-more (any-of (in char-set:letter+digit)
+                         (is #\_)
+                         (is #\-)))))
+
+(define quoted-key
+  (as-symbol basic-string))
 
 (define value
   (any-of basic-string
@@ -554,7 +560,8 @@
           array))
 
 (define key-value
-  (as-pair key
+  (as-pair
+    (any-of bare-key quoted-key)
     (enclosed-by (sequence whitespaces (is #\=) whitespaces)
                  value
                  line-end)))
