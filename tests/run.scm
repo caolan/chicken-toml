@@ -8,7 +8,15 @@
 (define example-toml (read-all "./tests/fixtures/example.toml"))
 
 (test-group "comment"
-  (test '() (read-toml "# this is a comment\n")))
+  (test "comment"
+        '()
+        (read-toml "# this is a comment\n"))
+  (test "leading whitespace"
+        '()
+        (read-toml "# this is a comment\n"))
+  (test "after key-value"
+        '((key . "val"))
+        (read-toml "key = 'val' # comment\n")))
 
 (test-group "blank lines"
   (test '() (read-toml "\r\n\n")))
@@ -145,9 +153,12 @@
   (test "array over multiple lines"
         '((arr . #(1 2 3)))
         (read-toml "arr = [\n  1, 2, 3\n]"))
+  (test "array values over multiple lines with trailing comma"
+        '((arr . #(1 2)))
+        (read-toml "arr = [\n  1,\n  2,\n]"))
   (test "array values over multiple lines with comment"
         '((arr . #(1 2)))
-        (read-toml "arr = [\n  1,\n  2, # this is ok\n]"))
+        (read-toml "arr = [\n  1,\n  2 # this is a comment\n]"))
   )
 
 ;(test-group "example"

@@ -111,9 +111,9 @@
 ; ```
 
 (define comment
-  (preceded-by (is #\#)
-               (zero-or-more (none-of* toml-newline item))
-               line-end))
+  (preceded-by (maybe whitespaces)
+               (is #\#)
+               (zero-or-more (none-of* toml-newline item))))
 
 ; String
 ; ------
@@ -492,19 +492,26 @@
         (every (lambda (v) (eq? type (toml-type v)))
                (cdr lst)))))
 
+(define array-ignores
+  (any-of comment (in char-set:whitespace)))
+
 (define array
   (recursive-parser
     (bind
       (enclosed-by
-        (sequence (is #\[) (maybe whitespaces))
+        (sequence (is #\[) (zero-or-more array-ignores))
         (zero-or-more
           (sequence
             value ;; first value
             (zero-or-more
               (preceded-by
-                (maybe whitespaces) (is #\,) (maybe whitespaces)
+                (zero-or-more array-ignores) (is #\,)
+                (zero-or-more array-ignores)
                 value))))
-        (sequence (maybe whitespaces) (is #\])))
+        (sequence (zero-or-more array-ignores)
+                  ;; trailing comma
+                  (maybe (sequence (is #\,) (zero-or-more array-ignores)))
+                  (is #\])))
       (lambda (x)
         (let ((arr (cons (caar x) (cadar x))))
           (if (same-types? arr)
@@ -529,7 +536,10 @@
   (as-pair key
     (enclosed-by (sequence whitespaces (is #\=) whitespaces)
                  value
-                 line-end)))
+                 (sequence
+                   (maybe whitespaces)
+                   (maybe comment)
+                   line-end))))
 
 (define blank-line
   (sequence (zero-or-more toml-whitespace) toml-newline))
