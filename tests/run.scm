@@ -185,6 +185,12 @@
   (test "nested and quoted table name"
         '((parent . ((foo.bar . ((baz . 123))))))
         (read-toml "[parent.\"foo.bar\"]\nbaz = 123\n"))
+  (test "repeated keys should not parse"
+        #f
+        (read-toml "foo = 123\nfoo = 456\n"))
+  (test "repeated table names should not parse"
+        #f
+        (read-toml "[table]\nprop = 'val'\n[table]\nprop2 = 'val2'\n"))
   ;; TODO:
   ;; - nested tables with properties on parents
   ;; - does TOML support nested tables out of order? eg, [foo], [bar], [foo.bar]

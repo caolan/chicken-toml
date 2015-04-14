@@ -676,33 +676,48 @@
     (lambda (x)
       (result (cons (car x) (cadr x))))))
 
-(define table-content
-  (zero-or-more
-    (preceded-by (zero-or-more (any-of comment blank-line)) ;; ignore these
-                 (any-of key-value)))) ;; match these
+(define table-property
+  (preceded-by
+    (zero-or-more (any-of comment blank-line)) ;; ignore these
+    key-value))
+
+(define (table-properties input)
+  (let loop ((result '())
+             (input input))
+    (let ((value (table-property input)))
+      (printf "value: ~S~n, result: ~S~n" value result)
+      (if value
+          (if (assoc (caar value) result)
+            ;; key already exists in property list
+            (fail input)
+            ;; key does not already exit
+            (loop (cons (car value) result)
+                  (cdr value)))
+          (cons (reverse! result)
+                input)))))
 
 (define table
   (bind
     (sequence
       (enclosed-by (is #\[) table-name (sequence (is #\]) line-end))
-      (maybe table-content))
+      (maybe table-properties))
     (lambda (x)
-      (printf "table x: ~S~n" x)
+      ;(printf "table x: ~S~n" x)
       (result (cons (car x) (cadr x))))))
 
 ;; putting it all together
 
-(define document
+(define (document doc)
   (bind
     (followed-by
       (sequence
-        (maybe table-content) ;; top-level key value pairs
+        (maybe table-properties) ;; top-level key value pairs
         (zero-or-more table)) ;; tables
       (sequence
         (zero-or-more (any-of comment blank-line)) ;; ignore these
         end-of-input)) ;; make sure we matched the whole document
     (lambda (x)
-      (printf "document x: ~S~n" x)
+      ;(printf "document x: ~S~n" x)
       (result (build-document (car x) (cadr x))))))
 
 ;; I THINK THIS IS NOT THE RIGHT WAY TO DO THIS,
@@ -714,6 +729,6 @@
   doc)
 
 (define (read-toml input)
-  (parse document (->parser-input input)))
+  (parse (document '()) (->parser-input input)))
 
 )
