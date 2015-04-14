@@ -556,6 +556,87 @@
 ; "character encoding" = "value"
 ; "ʎǝʞ" = "value"
 ; ```
+;
+; Dots are prohibited in bare keys because dots are used to signify nested tables!
+; Naming rules for each dot separated part are the same as for keys (see above).
+;
+; ```toml
+; [dog."tater.man"]
+; type = "pug"
+; ```
+;
+; In JSON land, that would give you the following structure:
+;
+; ```json
+; { "dog": { "tater.man": { "type": "pug" } } }
+; ```
+;
+; Whitespace around dot-separated parts is ignored, however, best practice is to
+; not use any extraneous whitespace.
+;
+; ```toml
+; [a.b.c]          # this is best practice
+; [ d.e.f ]        # same as [d.e.f]
+; [ g .  h  . i ]  # same as [g.h.i]
+; [ j . "ʞ" . l ]  # same as [j."ʞ".l]
+; ```
+;
+; You don't need to specify all the super-tables if you don't want to. TOML knows
+; how to do it for you.
+;
+; ```toml
+; # [x] you
+; # [x.y] don't
+; # [x.y.z] need these
+; [x.y.z.w] # for this to work
+; ```
+;
+; Empty tables are allowed and simply have no key/value pairs within them.
+;
+; As long as a super-table hasn't been directly defined and hasn't defined a
+; specific key, you may still write to it.
+;
+; ```toml
+; [a.b]
+; c = 1
+;
+; [a]
+; d = 2
+; ```
+;
+; You cannot define any key or table more than once. Doing so is invalid.
+;
+; ```toml
+; # DO NOT DO THIS
+;
+; [a]
+; b = 1
+;
+; [a]
+; c = 2
+; ```
+;
+; ```toml
+; # DO NOT DO THIS EITHER
+;
+; [a]
+; b = 1
+;
+; [a.b]
+; c = 2
+; ```
+;
+; All table names and keys must be non-empty.
+;
+; ```toml
+; # NOT VALID TOML
+; []
+; [a.]
+; [a..b]
+; [.b]
+; [.]
+;  = "no key name" # not allowed
+; ```
 
 (define bare-key
   (as-symbol
@@ -587,6 +668,14 @@
 (define blank-line
   (sequence (zero-or-more toml-whitespace) toml-newline))
 
+(define table-name
+  (bind
+    (sequence
+      bare-key
+      (zero-or-more (preceded-by (is #\.) bare-key)))
+    (lambda (x)
+      (result (cons (car x) (cadr x))))))
+
 (define table-content
   (zero-or-more
     (preceded-by (zero-or-more (any-of comment blank-line)) ;; ignore these
@@ -595,28 +684,34 @@
 (define table
   (bind
     (sequence
-      (enclosed-by
-        (is #\[)
-        (as-symbol (one-or-more (none-of* (is #\]) (in char-set:graphic))))
-        (sequence (is #\]) line-end))
+      (enclosed-by (is #\[) table-name (sequence (is #\]) line-end))
       (maybe table-content))
     (lambda (x)
-      (printf "x: ~S~n" x)
+      (printf "table x: ~S~n" x)
       (result (cons (car x) (cadr x))))))
 
 ;; putting it all together
 
 (define document
-  (enclosed-by
-    (zero-or-more (any-of comment blank-line)) ;; ignore these
-    ;; TODO: this is very similar to table-content, once nested tables
-    ;; are implemented it can probably be combined
-    (zero-or-more
-      (preceded-by (zero-or-more (any-of comment blank-line)) ;; ignore these
-                   (any-of table key-value))) ;; match these
-    (sequence
-      (zero-or-more (any-of comment blank-line)) ;; ignore these
-      end-of-input))) ;; make sure we matched the whole document
+  (bind
+    (followed-by
+      (sequence
+        (maybe table-content) ;; top-level key value pairs
+        (zero-or-more table)) ;; tables
+      (sequence
+        (zero-or-more (any-of comment blank-line)) ;; ignore these
+        end-of-input)) ;; make sure we matched the whole document
+    (lambda (x)
+      (printf "document x: ~S~n" x)
+      (result (build-document (car x) (cadr x))))))
+
+;; I THINK THIS IS NOT THE RIGHT WAY TO DO THIS,
+;; I should try writing my own parsers that pass state along so we get
+;; errors at the appropriate point of the parse
+;;
+;; merges tables into root document since they can occur out of order
+(define (build-document doc tables)
+  doc)
 
 (define (read-toml input)
   (parse document (->parser-input input)))

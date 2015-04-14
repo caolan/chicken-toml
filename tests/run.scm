@@ -176,6 +176,20 @@
   (test "table with blank lines and comments between key-values"
         '((table . ((foo . 123) (bar . 456))))
         (read-toml "[table]\nfoo = 123\n\n# comment\n\n\nbar = 456\n"))
+  (test "nested table"
+        '((foo . ((bar . ((baz . 123))))))
+        (read-toml "[foo.bar]\nbaz = 123\n"))
+  (test "quoted table name"
+        '((|foo bar| . ((baz . 123))))
+        (read-toml "[\"foo.bar\"]\nbaz = 123\n"))
+  (test "nested and quoted table name"
+        '((parent . ((foo.bar . ((baz . 123))))))
+        (read-toml "[parent.\"foo.bar\"]\nbaz = 123\n"))
+  ;; TODO:
+  ;; - nested tables with properties on parents
+  ;; - does TOML support nested tables out of order? eg, [foo], [bar], [foo.bar]
+  ;;    - this thread appears to suggest it is allowed:
+  ;;      https://github.com/toml-lang/toml/issues/320
   )
 
 ;(test-group "example"
