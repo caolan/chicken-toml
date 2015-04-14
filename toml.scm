@@ -538,6 +538,24 @@
 ; Keys are on the left of the equals sign and values are on the right. Whitespace
 ; is ignored around key names and values. The key, equals sign, and value must
 ; be on the same line (though some values can be broken over multiple lines).
+;
+; Keys may be either bare or quoted. **Bare keys** may only contain letters,
+; numbers, underscores, and dashes (`A-Za-z0-9_-`). **Quoted keys** follow the
+; exact same rules as basic strings and allow you to use a much broader set of key
+; names. Best practice is to use bare keys except when absolutely necessary.
+;
+; Key/value pairs within tables are not guaranteed to be in any specific order.
+;
+; ```toml
+; [table]
+; key = "value"
+; bare_key = "value"
+; bare-key = "value"
+;
+; "127.0.0.1" = "value"
+; "character encoding" = "value"
+; "ʎǝʞ" = "value"
+; ```
 
 (define bare-key
   (as-symbol
@@ -566,6 +584,14 @@
                  value
                  line-end)))
 
+(define blank-line
+  (sequence (zero-or-more toml-whitespace) toml-newline))
+
+(define table-content
+  (zero-or-more
+    (preceded-by (zero-or-more (any-of comment blank-line)) ;; ignore these
+                 (any-of key-value)))) ;; match these
+
 (define table
   (bind
     (sequence
@@ -573,21 +599,24 @@
         (is #\[)
         (as-symbol (one-or-more (none-of* (is #\]) (in char-set:graphic))))
         (sequence (is #\]) line-end))
-      (zero-or-more key-value))
+      (maybe table-content))
     (lambda (x)
       (printf "x: ~S~n" x)
       (result (cons (car x) (cadr x))))))
 
 ;; putting it all together
 
-(define blank-line
-  (sequence (zero-or-more toml-whitespace) toml-newline))
-
 (define document
   (enclosed-by
     (zero-or-more (any-of comment blank-line)) ;; ignore these
-    (zero-or-more (any-of table key-value)) ;; match these
-    end-of-input)) ;; make sure we matched the whole document
+    ;; TODO: this is very similar to table-content, once nested tables
+    ;; are implemented it can probably be combined
+    (zero-or-more
+      (preceded-by (zero-or-more (any-of comment blank-line)) ;; ignore these
+                   (any-of table key-value))) ;; match these
+    (sequence
+      (zero-or-more (any-of comment blank-line)) ;; ignore these
+      end-of-input))) ;; make sure we matched the whole document
 
 (define (read-toml input)
   (parse document (->parser-input input)))

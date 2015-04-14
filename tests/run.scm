@@ -173,6 +173,9 @@
   (test "table with quoted keys in key-value pairs"
         '((table . ((|my key| . "my value"))))
         (read-toml "[table]\n\"my key\" = \"my value\"\n"))
+  (test "table with blank lines and comments between key-values"
+        '((table . ((foo . 123) (bar . 456))))
+        (read-toml "[table]\nfoo = 123\n\n# comment\n\n\nbar = 456\n"))
   )
 
 ;(test-group "example"
