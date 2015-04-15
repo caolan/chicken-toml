@@ -57,10 +57,10 @@
 ; ]
 ; ```
 
-(module toml (read-toml merge-table)
+(module toml (read-toml insert-normal-table insert-array-table)
 
 (import scheme chicken)
-(use comparse srfi-1 srfi-13 srfi-14 rfc3339)
+(use comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib)
 
 ;; Some convenience functions for our implementation:
 
@@ -782,8 +782,8 @@
   (append (alist-delete key alist)
           (list (cons key value))))
 
-;; inserts table into document
-(define (merge-table parent name properties)
+;; inserts normal table into document
+(define (insert-normal-table parent name properties)
   (if (null? name)
     ;; at correct level to insert properties
     (and (not parent) properties)
@@ -792,12 +792,34 @@
       (if existing
         (if (list? (cdr existing))
           ;; replace path with new properties
-          (let ((sub (merge-table (cdr existing) (cdr name) properties)))
+          (let ((sub (insert-normal-table (cdr existing) (cdr name) properties)))
             (if sub (alist-replace (car name) sub parent) #f))
           ;; conflict at table name level
           #f)
         ;; path doesn't exist yet
-        (let ((sub (merge-table #f (cdr name) properties)))
+        (let ((sub (insert-normal-table #f (cdr name) properties)))
+          (if sub (append (or parent '())
+                          (list (cons (car name) sub))) #f))))))
+
+;; inserts array table into document
+(define (insert-array-table parent name properties)
+  (if (null? name)
+    ;; at correct level to insert properties
+    (cond ((not parent) (vector properties))
+          ((vector? parent) (vector-append parent (vector properties)))
+          (else #f))
+    ;; keep descending through document
+    (let ((existing (and parent (assoc (car name) parent))))
+      (if existing
+        (if (or (list? (cdr existing))
+                (and (= (length name) 1) (vector? (cdr existing))))
+          ;; replace path with new properties
+          (let ((sub (insert-array-table (cdr existing) (cdr name) properties)))
+            (if sub (alist-replace (car name) sub parent) #f))
+          ;; conflict at table name level
+          #f)
+        ;; path doesn't exist yet
+        (let ((sub (insert-array-table #f (cdr name) properties)))
           (if sub (append (or parent '())
                           (list (cons (car name) sub))) #f))))))
 
@@ -807,7 +829,7 @@
     (and result ;; if result is #f due to conflict, return immediately
       (let ((value (table input)))
         (if value
-            (let ((sub (merge-table result (caar value) (cdar value))))
+            (let ((sub (insert-normal-table result (caar value) (cdar value))))
               (loop sub (cdr value)))
             (cons result input))))))
 

@@ -160,13 +160,13 @@
         '((arr . #(1 2)))
         (read-toml "arr = [\n  1,\n  2 # this is a comment\n]")))
 
-(test-group "merge-table"
+(test-group "insert-normal-table"
   (test "empty sublevel"
         '((table . ()))
-        (merge-table '() '(table) '()))
+        (insert-normal-table '() '(table) '()))
   (test "empty target, nested source"
         '((foo . ((bar . ()))))
-        (merge-table '() '(foo bar) '()))
+        (insert-normal-table '() '(foo bar) '()))
   (test "merge properties at sub level"
         '((one . 1)
           (two . 2)
@@ -177,7 +177,7 @@
                    (sub2sub1 . ((wibble . "qwer")
                                 (wobble . "asdf")
                                 (wubble . "zxcv"))))))
-        (merge-table
+        (insert-normal-table
           '((one . 1)
             (two . 2)
             (sub1 . ((id . "something") (price . 1000)))
@@ -190,23 +190,22 @@
             (wubble . "zxcv"))))
   (test "key clash at leaf level"
         #f
-        (merge-table
+        (insert-normal-table
           '((foo . ((bar . 123))))
           '(foo)
           '((bar . 456) (baz . 789))))
   (test "key clash at table name level"
         #f
-        (merge-table
+        (insert-normal-table
           '((foo . ((bar . 123))))
           '(foo bar)
           '((baz . 456))))
   (test "key clash at table name level where target has alist"
         #f
-        (merge-table
+        (insert-normal-table
           '((foo . ((bar . ((asfd . 123))))))
           '(foo bar)
-          '((baz . 456))))
-  )
+          '((baz . 456)))))
 
 (test-group "tables"
   (test "empty table"
@@ -295,8 +294,103 @@
         (read-toml "point = {x = 1, x = 2}\n"))
   (test "inline table as value inside normal table"
         '((a . ((b . 1) (c . ((foo . "bar") (baz . "qux"))))))
-        (read-toml "[a]\nb = 1\nc = { foo = 'bar', baz = 'qux' }\n"))
-  )
+        (read-toml "[a]\nb = 1\nc = { foo = 'bar', baz = 'qux' }\n")))
+
+(test-group "array of tables"
+  (test "array table"
+        '((a . #(((b . 1)) ((b . 2)))))
+        (read-toml "[[a]]\nb = 1\n\n[[a]]\nb = 2\n"))
+  (test "empty array table"
+        '((a . #()))
+        (read-toml "[[a]]\n"))
+  (test "example products array table"
+        '((products . #(((name . "Hammer") (sku . 738594937))
+                        ()
+                        ((name . "Nail") (sku . 284758393) (color . "gray")))))
+        (read-toml
+          (string-append
+            "[[products]]\n"
+            "name = \"Hammer\"\n"
+            "sku = 738594937\n"
+            "\n"
+            "[[products]]\n"
+            "\n"
+            "[[products]]\n"
+            "name = \"Nail\"\n"
+            "sku = 284758393\n"
+            "color = \"gray\"\n")))
+  (test "nested arrays of tables"
+        '((fruit . #(((name . "apple")
+                      (physical . ((color . "red") (shape . "round")))
+                      (variety . #(((name . "red delicious"))
+                                   ((name . "granny smith")))))
+                     ((name . "banana")
+                      (variety . #(((name . "plantain"))))))))
+        (read-toml
+          (string-append
+            "[[fruit]]\n"
+            "  name = \"apple\"\n"
+            "\n"
+            "  [fruit.physical]\n"
+            "    color = \"red\"\n"
+            "    shape = \"round\"\n"
+            "\n"
+            "  [[fruit.variety]]\n"
+            "    name = \"red delicious\"\n"
+            "\n"
+            "  [[fruit.variety]]\n"
+            "    name = \"granny smith\"\n"
+            "\n"
+            "[[fruit]]\n"
+            "  name = \"banana\"\n"
+            "\n"
+            "  [[fruit.variety]]\n"
+            "    name = \"plantain\"\n")))
+  (test "normal table with the same name as array table should not parse"
+        #f
+        (read-toml
+          (string-append
+            "[[fruit]]\n"
+            "  name = \"apple\"\n"
+            "\n"
+            "  [[fruit.variety]]\n"
+            "    name = \"red delicious\"\n"
+            "\n"
+            "  # This table conflicts with the previous table\n"
+            "  [fruit.variety]\n"
+            "    name = \"granny smith\"\n")))
+  (test "can also use array of inline tables"
+        '((points . #(((x . 1) (y . 2) (z . 3))
+                      ((x . 7) (y . 8) (z . 9))
+                      ((x . 2) (y . 4) (z . 8)))))
+        (read-toml
+          (string-append
+            "points = [ { x = 1, y = 2, z = 3 },\n"
+            "           { x = 7, y = 8, z = 9 },\n"
+            "           { x = 2, y = 4, z = 8 } ]\n"))))
+
+(test-group "insert-array-table"
+   (test "empty array table"
+         '((a . #(())))
+         (insert-array-table '() '(a) '()))
+   (test "empty array table with property"
+         '((a . #(((foo . "bar")))))
+         (insert-array-table '() '(a) '((foo . "bar"))))
+   (test "insert with existing array table"
+         '((a . #(((foo . "bar"))
+                  ((foo . "baz")))))
+         (insert-array-table '((a . #(((foo . "bar")))))
+                             '(a)
+                             '((foo . "baz"))))
+   (test "insert new nested array table"
+         '((a . ((b . #(((c . 123)))))))
+         (insert-array-table '() '(a b) '((c . 123))))
+   (test "insert existing nested array table with siblings"
+         '((a . ((d . #t) (b . #(((c . 456)) ((c . 123)))))))
+         (insert-array-table '((a . ((b . #(((c . 456)))) (d . #t))))
+                             '(a b)
+                             '((c . 123))))
+   )
 
 ;(test-group "example"
 ;  (test (read-json example-json)
