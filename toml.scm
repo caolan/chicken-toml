@@ -782,46 +782,44 @@
   (append (alist-delete key alist)
           (list (cons key value))))
 
+;; walks through nested table paths, checking for conflicting names
+;; then passes over to an insert function to handle the final update
+;; of the 'leaf' property
+(define ((table-inserter fn) parent name properties)
+  (let loop ((parent parent)
+             (name name))
+    (if (null? name)
+      ;; at correct level handle insert
+      (fn parent properties)
+      ;; keep descending through document
+      (let ((existing (and parent (assoc (car name) parent))))
+        (if existing
+          ;; check it's an alist or a vector if it's the last part of the path
+          (if (or (list? (cdr existing))
+                  (and (= (length name) 1) (vector? (cdr existing))))
+            ;; replace path with new properties
+            (let ((sub (loop (cdr existing) (cdr name))))
+              (if sub (alist-replace (car name) sub parent) #f))
+            ;; conflict at table name level
+            #f)
+          ;; path doesn't exist yet
+          (let ((sub (loop #f (cdr name))))
+            (if sub (append (or parent '())
+                            (list (cons (car name) sub))) #f)))))))
+
 ;; inserts normal table into document
-(define (insert-normal-table parent name properties)
-  (if (null? name)
-    ;; at correct level to insert properties
-    (and (not parent) properties)
-    ;; keep descending through document
-    (let ((existing (and parent (assoc (car name) parent))))
-      (if existing
-        (if (list? (cdr existing))
-          ;; replace path with new properties
-          (let ((sub (insert-normal-table (cdr existing) (cdr name) properties)))
-            (if sub (alist-replace (car name) sub parent) #f))
-          ;; conflict at table name level
-          #f)
-        ;; path doesn't exist yet
-        (let ((sub (insert-normal-table #f (cdr name) properties)))
-          (if sub (append (or parent '())
-                          (list (cons (car name) sub))) #f))))))
+(define insert-normal-table
+  (table-inserter
+    (lambda (parent properties)
+      (and (not parent) properties))))
 
 ;; inserts array table into document
-(define (insert-array-table parent name properties)
-  (if (null? name)
-    ;; at correct level to insert properties
-    (cond ((not parent) (vector properties))
-          ((vector? parent) (vector-append parent (vector properties)))
-          (else #f))
-    ;; keep descending through document
-    (let ((existing (and parent (assoc (car name) parent))))
-      (if existing
-        (if (or (list? (cdr existing))
-                (and (= (length name) 1) (vector? (cdr existing))))
-          ;; replace path with new properties
-          (let ((sub (insert-array-table (cdr existing) (cdr name) properties)))
-            (if sub (alist-replace (car name) sub parent) #f))
-          ;; conflict at table name level
-          #f)
-        ;; path doesn't exist yet
-        (let ((sub (insert-array-table #f (cdr name) properties)))
-          (if sub (append (or parent '())
-                          (list (cons (car name) sub))) #f))))))
+(define insert-array-table
+  (table-inserter
+    (lambda (parent properties)
+      (cond ((not parent) (vector properties))
+            ((vector? parent) (vector-append parent (vector properties)))
+            (else #f)))))
 
 (define ((tables doc) input)
   (let loop ((result doc)
