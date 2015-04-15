@@ -258,10 +258,30 @@
             "\n"
             "[a.c]\n"
             "baz = 3\n")))
-  ;; TODO:
-  ;; - does TOML support nested tables out of order? eg, [foo], [bar], [foo.bar]
-  ;;    - this thread appears to suggest it is allowed:
-  ;;      https://github.com/toml-lang/toml/issues/320
+  (test "repeated table names should not parse"
+        #f
+        (read-toml
+          (string-append
+            "[a]\n"
+            "b = 1\n"
+            "\n"
+            "[a]\n"
+            "c = 2\n")))
+  (test "table name conflicting with property should not parse"
+        #f
+        (read-toml
+          (string-append
+            "[a]\n"
+            "b = 1\n"
+            "\n"
+            "[a.b]\n"
+            "c = 2\n")))
+  (test "table name [] should not parse" #f (read-toml "[]"))
+  (test "table name [a.] should not parse" #f (read-toml "[a.]"))
+  (test "table name [a..b] should not parse" #f (read-toml "[a..b]"))
+  (test "table name [.b] should not parse" #f (read-toml "[.b]"))
+  (test "table name [.] should not parse" #f (read-toml "[.]"))
+  (test "missing key name should not parse" #f (read-toml " = 'no key name'"))
   )
 
 ;(test-group "example"
