@@ -239,8 +239,26 @@
   (test "repeated table names should not parse"
         #f
         (read-toml "[table]\nprop = 'val'\n[table]\nprop2 = 'val2'\n"))
+  (test "nested tables with siblings on parent"
+        '((foo . 123)
+          (bar . ((baz . 456)
+                  (qux . ((wibble . #t))))))
+        (read-toml "foo = 123\n\n[bar]\nbaz = 456\n[bar.qux]\nwibble = true\n"))
+  (test "nested tables out of order (see toml-lang/toml#320)"
+        '((b . ((bar . 2)))
+          (a . ((foo . 1)
+                (c . ((baz . 3))))))
+        (read-toml
+          (string-append
+            "[a]\n"
+            "foo = 1\n"
+            "\n"
+            "[b]\n"
+            "bar = 2\n"
+            "\n"
+            "[a.c]\n"
+            "baz = 3\n")))
   ;; TODO:
-  ;; - nested tables with properties on parents
   ;; - does TOML support nested tables out of order? eg, [foo], [bar], [foo.bar]
   ;;    - this thread appears to suggest it is allowed:
   ;;      https://github.com/toml-lang/toml/issues/320

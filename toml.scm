@@ -110,6 +110,9 @@
 (define whitespaces
   (one-or-more toml-whitespace))
 
+(define ignored
+  (zero-or-more (any-of comment (in char-set:whitespace))))
+
 (define line-end
   (sequence
     (maybe whitespaces) ;; allow trailing whitespace
@@ -493,29 +496,24 @@
         (every (lambda (v) (eq? type (toml-type v)))
                (cdr lst)))))
 
-(define array-ignore
-  (zero-or-more (any-of comment (in char-set:whitespace))))
-
 (define array
   (recursive-parser
     (bind
       (enclosed-by
         ;; opening
-        (sequence (is #\[) array-ignore)
+        (sequence (is #\[) ignored)
         ;; values
         (zero-or-more
           (sequence
             value ;; first value
             (zero-or-more
-              (preceded-by array-ignore
-                           (is #\,)
-                           array-ignore
+              (preceded-by ignored (is #\,) ignored
                            ;; subsequent values
                            value))))
         ;; closing
-        (sequence array-ignore
+        (sequence ignored
                   ;; trailing comma
-                  (maybe (sequence (is #\,) array-ignore))
+                  (maybe (sequence (is #\,) ignored))
                   (is #\])))
       (lambda (x)
         (let ((arr (cons (caar x) (cadar x))))
@@ -668,9 +666,6 @@
                  value
                  line-end)))
 
-(define blank-line
-  (sequence (zero-or-more toml-whitespace) toml-newline))
-
 (define table-name
   (bind
     (sequence key (zero-or-more (preceded-by (is #\.) key)))
@@ -678,13 +673,9 @@
       (result (cons (car x) (cadr x))))))
 
 (define table-property
-  (preceded-by
-    (zero-or-more (any-of comment blank-line)) ;; ignore these
-    key-value))
+  (enclosed-by ignored key-value ignored))
 
 (define (table-properties input)
-  ;; TODO: re-implement this pattern (based on zero-or-more) as
-  ;; a general fold-parser??
   (let loop ((result '())
              (input input))
     (let ((value (table-property input)))
@@ -730,7 +721,9 @@
 (define table
   (bind
     (sequence
-      (enclosed-by (is #\[) table-name (sequence (is #\]) line-end))
+      (enclosed-by (sequence ignored (is #\[) ignored)
+                   table-name
+                   (sequence (is #\]) line-end))
       (maybe table-properties))
     (lambda (x)
       (result (cons (car x) (cadr x))))))
@@ -748,13 +741,14 @@
 ;; putting it all together
 
 (define document
-  (bind table-properties ;; get top-level key value pairs
+  ;; get top-level key value pairs
+  (bind table-properties
         (lambda (doc)
           (followed-by
-            (tables doc) ;; merge tables with top-level props
-            (sequence
-              (zero-or-more (any-of comment blank-line)) ;; ignore these
-              end-of-input))))) ;; make sure we matched the whole document
+            ;; merge tables with top-level props
+            (tables doc)
+            ;; make sure we matched the whole document
+            (sequence ignored end-of-input)))))
 
 (define (read-toml input)
   (parse document (->parser-input input)))
