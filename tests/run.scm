@@ -160,6 +160,54 @@
         '((arr . #(1 2)))
         (read-toml "arr = [\n  1,\n  2 # this is a comment\n]")))
 
+(test-group "merge-table"
+  (test "empty sublevel"
+        '((table . ()))
+        (merge-table '() '(table) '()))
+  (test "empty target, nested source"
+        '((foo . ((bar . ()))))
+        (merge-table '() '(foo bar) '()))
+  (test "merge properties at sub level"
+        '((one . 1)
+          (two . 2)
+          (sub1 . ((id . "something") (price . 1000)))
+          (sub2 . ((foo . 123)
+                   (bar . 456)
+                   (sub2sub2 . ((baz . "qux")))
+                   (sub2sub1 . ((wibble . "qwer")
+                                (wobble . "asdf")
+                                (wubble . "zxcv"))))))
+        (merge-table
+          '((one . 1)
+            (two . 2)
+            (sub1 . ((id . "something") (price . 1000)))
+            (sub2 . ((foo . 123)
+                     (bar . 456)
+                     (sub2sub2 . ((baz . "qux"))))))
+          '(sub2 sub2sub1)
+          '((wibble . "qwer")
+            (wobble . "asdf")
+            (wubble . "zxcv"))))
+  (test "key clash at leaf level"
+        #f
+        (merge-table
+          '((foo . ((bar . 123))))
+          '(foo)
+          '((bar . 456) (baz . 789))))
+  (test "key clash at table name level"
+        #f
+        (merge-table
+          '((foo . ((bar . 123))))
+          '(foo bar)
+          '((baz . 456))))
+  (test "key clash at table name level where target has alist"
+        #f
+        (merge-table
+          '((foo . ((bar . ((asfd . 123))))))
+          '(foo bar)
+          '((baz . 456))))
+  )
+
 (test-group "tables"
   (test "empty table"
         '((table . ()))
@@ -181,7 +229,7 @@
         (read-toml "[foo.bar]\nbaz = 123\n"))
   (test "quoted table name"
         '((|foo bar| . ((baz . 123))))
-        (read-toml "[\"foo.bar\"]\nbaz = 123\n"))
+        (read-toml "[\"foo bar\"]\nbaz = 123\n"))
   (test "nested and quoted table name"
         '((parent . ((foo.bar . ((baz . 123))))))
         (read-toml "[parent.\"foo.bar\"]\nbaz = 123\n"))

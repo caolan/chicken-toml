@@ -57,10 +57,10 @@
 ; ]
 ; ```
 
-(module toml (read-toml)
+(module toml (read-toml merge-table)
 
 (import scheme chicken)
-(use comparse srfi-1 srfi-13 srfi-14 rfc3339 extras)
+(use comparse srfi-1 srfi-13 srfi-14 rfc3339)
 
 ;; Some convenience functions for our implementation:
 
@@ -647,6 +647,9 @@
 (define quoted-key
   (as-symbol basic-string))
 
+(define key
+  (any-of bare-key quoted-key))
+
 (define value
   (any-of basic-string
           multi-line-basic-string
@@ -660,7 +663,7 @@
 
 (define key-value
   (as-pair
-    (any-of bare-key quoted-key)
+    key
     (enclosed-by (sequence whitespaces (is #\=) whitespaces)
                  value
                  line-end)))
@@ -670,9 +673,7 @@
 
 (define table-name
   (bind
-    (sequence
-      bare-key
-      (zero-or-more (preceded-by (is #\.) bare-key)))
+    (sequence key (zero-or-more (preceded-by (is #\.) key)))
     (lambda (x)
       (result (cons (car x) (cadr x))))))
 
@@ -682,19 +683,49 @@
     key-value))
 
 (define (table-properties input)
+  ;; TODO: re-implement this pattern (based on zero-or-more) as
+  ;; a general fold-parser??
   (let loop ((result '())
              (input input))
     (let ((value (table-property input)))
-      (printf "value: ~S~n, result: ~S~n" value result)
       (if value
           (if (assoc (caar value) result)
             ;; key already exists in property list
             (fail input)
-            ;; key does not already exit
+            ;; key does not already exist
             (loop (cons (car value) result)
                   (cdr value)))
           (cons (reverse! result)
                 input)))))
+
+;; returns new alist if successful, #f if the key already exists
+(define (alist-append-uniq key value alist)
+  (and (not (assoc key alist))
+       (append alist (list (cons key value)))))
+
+;; removes all instances of key in alist, then appends a new pair
+;; for given key/value
+(define (alist-replace key value alist)
+  (append (alist-delete key alist)
+          (list (cons key value))))
+
+(define (merge-table parent name properties)
+  (if (null? name)
+    ;; at correct level to insert properties
+    (and (not parent) properties)
+    ;; keep descending through document
+    (let ((existing (and parent (assoc (car name) parent))))
+      (if existing
+        (if (list? (cdr existing))
+          ;; replace path with new properties
+          (let ((sub (merge-table (cdr existing) (cdr name) properties)))
+            (if sub (alist-replace (car name) sub parent) #f))
+          ;; conflict at table name level
+          #f)
+        ;; path doesn't exist yet
+        (let ((sub (merge-table #f (cdr name) properties)))
+          (if sub (append (or parent '())
+                          (list (cons (car name) sub))) #f))))))
 
 (define table
   (bind
@@ -702,33 +733,30 @@
       (enclosed-by (is #\[) table-name (sequence (is #\]) line-end))
       (maybe table-properties))
     (lambda (x)
-      ;(printf "table x: ~S~n" x)
       (result (cons (car x) (cadr x))))))
+
+(define ((tables doc) input)
+  (let loop ((result doc)
+             (input input))
+    (and result ;; if result is #f due to conflict, return immediately
+      (let ((value (table input)))
+        (if value
+            (let ((sub (merge-table result (caar value) (cdar value))))
+              (loop sub (cdr value)))
+            (cons result input))))))
 
 ;; putting it all together
 
-(define (document doc)
-  (bind
-    (followed-by
-      (sequence
-        (maybe table-properties) ;; top-level key value pairs
-        (zero-or-more table)) ;; tables
-      (sequence
-        (zero-or-more (any-of comment blank-line)) ;; ignore these
-        end-of-input)) ;; make sure we matched the whole document
-    (lambda (x)
-      ;(printf "document x: ~S~n" x)
-      (result (build-document (car x) (cadr x))))))
-
-;; I THINK THIS IS NOT THE RIGHT WAY TO DO THIS,
-;; I should try writing my own parsers that pass state along so we get
-;; errors at the appropriate point of the parse
-;;
-;; merges tables into root document since they can occur out of order
-(define (build-document doc tables)
-  doc)
+(define document
+  (bind table-properties ;; get top-level key value pairs
+        (lambda (doc)
+          (followed-by
+            (tables doc) ;; merge tables with top-level props
+            (sequence
+              (zero-or-more (any-of comment blank-line)) ;; ignore these
+              end-of-input))))) ;; make sure we matched the whole document
 
 (define (read-toml input)
-  (parse (document '()) (->parser-input input)))
+  (parse document (->parser-input input)))
 
 )
