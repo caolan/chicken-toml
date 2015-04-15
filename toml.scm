@@ -521,6 +521,8 @@
             (result (list->vector arr))
             fail))))))
 
+
+
 ; Table
 ; -----
 ;
@@ -649,22 +651,22 @@
   (any-of bare-key quoted-key))
 
 (define value
-  (any-of basic-string
-          multi-line-basic-string
-          literal-string
-          multi-line-literal-string
-          float
-          date
-          integer
-          boolean
-          array))
+  (recursive-parser
+    (any-of basic-string
+            multi-line-basic-string
+            literal-string
+            multi-line-literal-string
+            float
+            date
+            integer
+            boolean
+            array
+            inline-table)))
 
 (define key-value
-  (as-pair
-    key
-    (enclosed-by (sequence whitespaces (is #\=) whitespaces)
-                 value
-                 line-end)))
+  (as-pair key (preceded-by
+                 (sequence whitespaces (is #\=) whitespaces)
+                 value)))
 
 (define table-name
   (bind
@@ -673,7 +675,7 @@
       (result (cons (car x) (cadr x))))))
 
 (define table-property
-  (enclosed-by ignored key-value ignored))
+  (enclosed-by ignored key-value line-end))
 
 (define (table-properties input)
   (let loop ((result '())
@@ -689,10 +691,90 @@
           (cons (reverse! result)
                 input)))))
 
-;; returns new alist if successful, #f if the key already exists
-(define (alist-append-uniq key value alist)
-  (and (not (assoc key alist))
-       (append alist (list (cons key value)))))
+(define table
+  (bind
+    (sequence
+      (enclosed-by (sequence ignored (is #\[) ignored)
+                   table-name
+                   (sequence (is #\]) line-end))
+      (maybe table-properties))
+    (lambda (x)
+      (result (cons (car x) (cadr x))))))
+
+; Inline Table
+; ------------
+;
+; Inline tables provide a more compact syntax for expressing tables. They are
+; especially useful for grouped data that can otherwise quickly become verbose.
+; Inline tables are enclosed in curly braces `{` and `}`. Within the braces, zero
+; or more comma separated key/value pairs may appear. Key/value pairs take the
+; same form as key/value pairs in standard tables. All value types are allowed,
+; including inline tables.
+;
+; Inline tables are intended to appear on a single line. No newlines are allowed
+; between the curly braces unless they are valid within a value. Even so, it is
+; strongly discouraged to break an inline table onto multiples lines. If you find
+; yourself gripped with this desire, it means you should be using standard tables.
+;
+; ```toml
+; name = { first = "Tom", last = "Preston-Werner" }
+; point = { x = 1, y = 2 }
+; ```
+;
+; The inline tables above are identical to the following standard table
+; definitions:
+;
+; ```toml
+; [name]
+; first = "Tom"
+; last = "Preston-Werner"
+;
+; [point]
+; x = 1
+; y = 2
+; ```
+
+(define inline-table-first-parser
+  key-value)
+
+(define inline-table-rest-parser
+  (preceded-by (maybe whitespaces)
+               (is #\,)
+               (maybe whitespaces)
+               key-value))
+
+(define (inline-table-properties input)
+  (let loop ((result '())
+             (input input)
+             (parser inline-table-first-parser)) ;; first value parser
+    (let ((value (parser input)))
+      (if value
+          (if (assoc (caar value) result)
+            ;; key already exists in property list
+            (fail input)
+            ;; key does not already exist
+            (loop (cons (car value) result)
+                  (cdr value)
+                  ;; parser for subsequent values
+                  inline-table-rest-parser))
+          (cons (reverse! result)
+                input)))))
+
+(define inline-table
+  (recursive-parser
+    (enclosed-by
+      ;; opening
+      (sequence (is #\{) (maybe whitespaces))
+      ;; values
+      (maybe inline-table-properties)
+      ;; closing
+      (sequence ignored
+                ;; trailing comma
+                (maybe (sequence (is #\,) (maybe whitespaces)))
+                (is #\})))))
+
+
+;; putting it all together
 
 ;; removes all instances of key in alist, then appends a new pair
 ;; for given key/value
@@ -700,6 +782,7 @@
   (append (alist-delete key alist)
           (list (cons key value))))
 
+;; inserts table into document
 (define (merge-table parent name properties)
   (if (null? name)
     ;; at correct level to insert properties
@@ -718,16 +801,6 @@
           (if sub (append (or parent '())
                           (list (cons (car name) sub))) #f))))))
 
-(define table
-  (bind
-    (sequence
-      (enclosed-by (sequence ignored (is #\[) ignored)
-                   table-name
-                   (sequence (is #\]) line-end))
-      (maybe table-properties))
-    (lambda (x)
-      (result (cons (car x) (cadr x))))))
-
 (define ((tables doc) input)
   (let loop ((result doc)
              (input input))
@@ -737,8 +810,6 @@
             (let ((sub (merge-table result (caar value) (cdar value))))
               (loop sub (cdr value)))
             (cons result input))))))
-
-;; putting it all together
 
 (define document
   ;; get top-level key value pairs

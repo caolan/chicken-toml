@@ -281,7 +281,21 @@
   (test "table name [a..b] should not parse" #f (read-toml "[a..b]"))
   (test "table name [.b] should not parse" #f (read-toml "[.b]"))
   (test "table name [.] should not parse" #f (read-toml "[.]"))
-  (test "missing key name should not parse" #f (read-toml " = 'no key name'"))
+  (test "missing key name should not parse" #f (read-toml " = 'no key name'")))
+
+(test-group "inline tables"
+  (test "inline table"
+        '((point . ((x . 1) (y . 2))))
+        (read-toml "point = {x = 1, y = 2}\n"))
+  (test "newlines not allowed in inline tables"
+        #f
+        (read-toml "point = {\n  x = 1,\n  y = 2\n}\n"))
+  (test "repeated keys in inline tables should not parse"
+        #f
+        (read-toml "point = {x = 1, x = 2}\n"))
+  (test "inline table as value inside normal table"
+        '((a . ((b . 1) (c . ((foo . "bar") (baz . "qux"))))))
+        (read-toml "[a]\nb = 1\nc = { foo = 'bar', baz = 'qux' }\n"))
   )
 
 ;(test-group "example"
