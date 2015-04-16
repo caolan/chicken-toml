@@ -22,6 +22,9 @@
   (test "basic string"
         '((str . "I'm a string"))
         (read-toml "str = \"I'm a string\"\n"))
+  (test "empty basic string"
+        '((str . ""))
+        (read-toml "str = \"\"\n"))
   (test "basic string no newline"
         '((str . "I'm a string"))
         (read-toml "str = \"I'm a string\""))
@@ -39,6 +42,9 @@
   (test "multi-line basic string"
         '((str . "Roses are red\nViolets are blue"))
         (read-toml "str = \"\"\"\nRoses are red\nViolets are blue\"\"\"\n"))
+  (test "empty multi-line basic string"
+        '((str . ""))
+        (read-toml "str = \"\"\"\"\"\"\n"))
   (test "trimmed whitespace"
         '((str . "The quick brown fox jumps over the lazy dog."))
         (read-toml
