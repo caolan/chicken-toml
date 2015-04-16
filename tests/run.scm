@@ -140,6 +140,9 @@
         (read-toml "date = 1979-05-27T07:32:00.999999-07:00")))
 
 (test-group "arrays"
+  (test "empty array"
+        '((arr . #()))
+        (read-toml "arr = []"))
   (test "array of integers"
         '((arr . #(1 2 3)))
         (read-toml "arr = [ 1, 2, 3 ]"))

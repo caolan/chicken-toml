@@ -513,10 +513,12 @@
                   (maybe (sequence (is #\,) ignored))
                   (is #\])))
       (lambda (x)
-        (let ((arr (cons (caar x) (cadar x))))
-          (if (same-types? arr)
-            (result (list->vector arr))
-            fail))))))
+        (if (null? x)
+          (result #())
+          (let ((arr (cons (caar x) (cadar x))))
+            (if (same-types? arr)
+              (result (list->vector arr))
+              fail)))))))
 
 
 
