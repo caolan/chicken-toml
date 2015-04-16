@@ -62,6 +62,9 @@
   (test "literal string"
         '((winpath . "C:\\Users\\nodejs\\templates"))
         (read-toml "winpath = 'C:\\Users\\nodejs\\templates'"))
+  (test "empty literal string"
+        '((str . ""))
+        (read-toml "str = ''"))
   (test "literal string with unicode"
         '((str . "中国"))
         (read-toml "str = '中国'\n"))
@@ -73,6 +76,9 @@
   (test "multi-line regex example"
         '((regex2 . "I [dw]on't need \\d{2} apples"))
         (read-toml "regex2 = '''I [dw]on't need \\d{2} apples'''"))
+  (test "empty multi-line literal string"
+        '((str . ""))
+        (read-toml "str = ''''''"))
   (test "multi-line lines example"
         `((lines . ,(string-append
                       "The first newline is\n"
