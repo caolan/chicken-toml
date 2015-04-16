@@ -205,7 +205,19 @@
         (insert-normal-table
           '((foo . ((bar . ((asfd . 123))))))
           '(foo bar)
-          '((baz . 456)))))
+          '((baz . 456))))
+  (test "insert normal table into array table"
+        '((foo . #(((bar . 123) (baz . ((qux . 456)))))))
+        (insert-normal-table
+          '((foo . #(((bar . 123)))))
+          '(foo baz)
+          '((qux . 456))))
+  (test "insert normal table into empty array table"
+        '((foo . #(((baz . ((qux . 456)))))))
+        (insert-normal-table
+          '((foo . #(())))
+          '(foo baz)
+          '((qux . 456)))))
 
 (test-group "tables"
   (test "empty table"
@@ -296,12 +308,34 @@
         '((a . ((b . 1) (c . ((foo . "bar") (baz . "qux"))))))
         (read-toml "[a]\nb = 1\nc = { foo = 'bar', baz = 'qux' }\n")))
 
+(test-group "insert-array-table"
+   (test "empty array table"
+         '((a . #(())))
+         (insert-array-table '() '(a) '()))
+   (test "empty array table with property"
+         '((a . #(((foo . "bar")))))
+         (insert-array-table '() '(a) '((foo . "bar"))))
+   (test "insert with existing array table"
+         '((a . #(((foo . "bar"))
+                  ((foo . "baz")))))
+         (insert-array-table '((a . #(((foo . "bar")))))
+                             '(a)
+                             '((foo . "baz"))))
+   (test "insert new nested array table"
+         '((a . ((b . #(((c . 123)))))))
+         (insert-array-table '() '(a b) '((c . 123))))
+   (test "insert existing nested array table with siblings"
+         '((a . ((d . #t) (b . #(((c . 456)) ((c . 123)))))))
+         (insert-array-table '((a . ((b . #(((c . 456)))) (d . #t))))
+                             '(a b)
+                             '((c . 123)))))
+
 (test-group "array of tables"
   (test "array table"
         '((a . #(((b . 1)) ((b . 2)))))
         (read-toml "[[a]]\nb = 1\n\n[[a]]\nb = 2\n"))
   (test "empty array table"
-        '((a . #()))
+        '((a . #(())))
         (read-toml "[[a]]\n"))
   (test "example products array table"
         '((products . #(((name . "Hammer") (sku . 738594937))
@@ -326,6 +360,11 @@
                                    ((name . "granny smith")))))
                      ((name . "banana")
                       (variety . #(((name . "plantain"))))))))
+        ;; TODO:
+        ;; You can create nested arrays of tables as well. Just use the same double bracket syntax on sub-tables. Each double-bracketed sub-table will belong to the most recently defined table element above it.
+        ;; SO:
+        ;; update insert functions to use last defined array entry when
+        ;; descending through paths
         (read-toml
           (string-append
             "[[fruit]]\n"
@@ -368,29 +407,6 @@
             "points = [ { x = 1, y = 2, z = 3 },\n"
             "           { x = 7, y = 8, z = 9 },\n"
             "           { x = 2, y = 4, z = 8 } ]\n"))))
-
-(test-group "insert-array-table"
-   (test "empty array table"
-         '((a . #(())))
-         (insert-array-table '() '(a) '()))
-   (test "empty array table with property"
-         '((a . #(((foo . "bar")))))
-         (insert-array-table '() '(a) '((foo . "bar"))))
-   (test "insert with existing array table"
-         '((a . #(((foo . "bar"))
-                  ((foo . "baz")))))
-         (insert-array-table '((a . #(((foo . "bar")))))
-                             '(a)
-                             '((foo . "baz"))))
-   (test "insert new nested array table"
-         '((a . ((b . #(((c . 123)))))))
-         (insert-array-table '() '(a b) '((c . 123))))
-   (test "insert existing nested array table with siblings"
-         '((a . ((d . #t) (b . #(((c . 456)) ((c . 123)))))))
-         (insert-array-table '((a . ((b . #(((c . 456)))) (d . #t))))
-                             '(a b)
-                             '((c . 123))))
-   )
 
 ;(test-group "example"
 ;  (test (read-json example-json)

@@ -691,7 +691,7 @@
           (cons (reverse! result)
                 input)))))
 
-(define table
+(define normal-table
   (bind
     (sequence
       (enclosed-by (sequence ignored (is #\[) ignored)
@@ -699,7 +699,7 @@
                    (sequence (is #\]) line-end))
       (maybe table-properties))
     (lambda (x)
-      (result (cons (car x) (cadr x))))))
+      (result (list 'normal (car x) (cadr x))))))
 
 ; Inline Table
 ; ------------
@@ -773,6 +773,124 @@
                 (maybe (sequence (is #\,) (maybe whitespaces)))
                 (is #\})))))
 
+; Array of Tables
+; ---------------
+;
+; The last type that has not yet been expressed is an array of tables. These can
+; be expressed by using a table name in double brackets. Each table with the same
+; double bracketed name will be an element in the array. The tables are inserted
+; in the order encountered. A double bracketed table without any key/value pairs
+; will be considered an empty table.
+;
+; ```toml
+; [[products]]
+; name = "Hammer"
+; sku = 738594937
+;
+; [[products]]
+;
+; [[products]]
+; name = "Nail"
+; sku = 284758393
+; color = "gray"
+; ```
+;
+; In JSON land, that would give you the following structure.
+;
+; ```json
+; {
+;   "products": [
+;     { "name": "Hammer", "sku": 738594937 },
+;     { },
+;     { "name": "Nail", "sku": 284758393, "color": "gray" }
+;   ]
+; }
+; ```
+;
+; You can create nested arrays of tables as well. Just use the same double bracket
+; syntax on sub-tables. Each double-bracketed sub-table will belong to the most
+; recently defined table element above it.
+;
+; ```toml
+; [[fruit]]
+;   name = "apple"
+;
+;   [fruit.physical]
+;     color = "red"
+;     shape = "round"
+;
+;   [[fruit.variety]]
+;     name = "red delicious"
+;
+;   [[fruit.variety]]
+;     name = "granny smith"
+;
+; [[fruit]]
+;   name = "banana"
+;
+;   [[fruit.variety]]
+;     name = "plantain"
+; ```
+;
+; The above TOML maps to the following JSON.
+;
+; ```json
+; {
+;   "fruit": [
+;     {
+;       "name": "apple",
+;       "physical": {
+;         "color": "red",
+;         "shape": "round"
+;       },
+;       "variety": [
+;         { "name": "red delicious" },
+;         { "name": "granny smith" }
+;       ]
+;     },
+;     {
+;       "name": "banana",
+;       "variety": [
+;         { "name": "plantain" }
+;       ]
+;     }
+;   ]
+; }
+; ```
+;
+; Attempting to define a normal table with the same name as an already established
+; array must produce an error at parse time.
+;
+; ```toml
+; # INVALID TOML DOC
+; [[fruit]]
+;   name = "apple"
+;
+;   [[fruit.variety]]
+;     name = "red delicious"
+;
+;   # This table conflicts with the previous table
+;   [fruit.variety]
+;     name = "granny smith"
+; ```
+;
+; You may also use inline tables where appropriate:
+;
+; ```toml
+; points = [ { x = 1, y = 2, z = 3 },
+;            { x = 7, y = 8, z = 9 },
+;            { x = 2, y = 4, z = 8 } ]
+; ```
+
+(define array-table
+  (bind
+    (sequence
+      (enclosed-by (sequence ignored (char-seq "[[") ignored)
+                   table-name
+                   (sequence (char-seq "]]") line-end))
+      (maybe table-properties))
+    (lambda (x)
+      (result (list 'array (car x) (cadr x))))))
 
 ;; putting it all together
 
@@ -793,19 +911,34 @@
       (fn parent properties)
       ;; keep descending through document
       (let ((existing (and parent (assoc (car name) parent))))
-        (if existing
-          ;; check it's an alist or a vector if it's the last part of the path
-          (if (or (list? (cdr existing))
-                  (and (= (length name) 1) (vector? (cdr existing))))
-            ;; replace path with new properties
-            (let ((sub (loop (cdr existing) (cdr name))))
-              (if sub (alist-replace (car name) sub parent) #f))
-            ;; conflict at table name level
-            #f)
+        (cond
           ;; path doesn't exist yet
-          (let ((sub (loop #f (cdr name))))
-            (if sub (append (or parent '())
-                            (list (cons (car name) sub))) #f)))))))
+          ((not existing)
+           (let ((sub (loop #f (cdr name))))
+             (if sub (append (or parent '())
+                             (list (cons (car name) sub))) #f)))
+          ;; existing normal table, or final part of path (and array)
+          ((or (list? (cdr existing))
+               (and (vector? (cdr existing))
+                    (= (length name) 1)))
+           ;; replace path with new properties
+           (let ((sub (loop (cdr existing) (cdr name))))
+             (if sub (alist-replace (car name) sub parent) #f)))
+          ;; existing array not final part of path
+          ((vector? (cdr existing))
+           (let* ((v (vector-copy (cdr existing)))
+                  (len (vector-length v))
+                  (last (vector-ref v (- len 1)))
+                  (sub (loop last (cdr name))))
+             (if sub
+               (begin
+                 ;; update last table in array with result
+                 (vector-set! v (- len 1) sub)
+                 (alist-replace (car name) v parent))
+               #f)))
+          ;; conflicting property at this point in path
+          (else
+            #f))))))
 
 ;; inserts normal table into document
 (define insert-normal-table
@@ -821,15 +954,25 @@
             ((vector? parent) (vector-append parent (vector properties)))
             (else #f)))))
 
+(define table
+  (any-of normal-table array-table))
+
 (define ((tables doc) input)
   (let loop ((result doc)
              (input input))
     (and result ;; if result is #f due to conflict, return immediately
       (let ((value (table input)))
         (if value
-            (let ((sub (insert-normal-table result (caar value) (cdar value))))
+          (let* ((t (car value))
+                 (type (list-ref t 0))
+                 (path (list-ref t 1))
+                 (properties (list-ref t 2))
+                 (ins (if (eq? 'normal type)
+                        insert-normal-table
+                        insert-array-table))
+                 (sub (ins result path properties)))
               (loop sub (cdr value)))
-            (cons result input))))))
+          (cons result input))))))
 
 (define document
   ;; get top-level key value pairs
