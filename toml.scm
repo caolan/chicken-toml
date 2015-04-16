@@ -191,7 +191,7 @@
 (define basic-string
   (enclosed-by
     (is #\")
-    (as-string (one-or-more char))
+    (as-string (zero-or-more char))
     (is #\")))
 
 ; Sometimes you need to express passages of text (e.g. translation files) or would
@@ -251,7 +251,7 @@
   (enclosed-by
     (sequence (char-seq "\"\"\"") (maybe toml-newline))
     (as-string
-      (one-or-more (any-of char (in char-set:whitespace) escaped-whitespace)))
+      (zero-or-more (any-of char (in char-set:whitespace) escaped-whitespace)))
     (char-seq "\"\"\"")))
 
 ; Any Unicode character may be used except those that must be escaped: backslash
@@ -276,7 +276,7 @@
   (enclosed-by
     (is #\')
     (as-string
-      (one-or-more
+      (zero-or-more
         (none-of* (is #\') toml-newline item)))
     (is #\')))
 
@@ -304,7 +304,7 @@
 (define multi-line-literal-string
   (enclosed-by
     (sequence (char-seq "'''") (maybe toml-newline))
-    (as-string (one-or-more (none-of* (char-seq "'''") item)))
+    (as-string (zero-or-more (none-of* (char-seq "'''") item)))
     (char-seq "'''")))
 
 ; Integer
@@ -651,10 +651,10 @@
 
 (define value
   (recursive-parser
-    (any-of basic-string
-            multi-line-basic-string
-            literal-string
+    (any-of multi-line-basic-string
+            basic-string
             multi-line-literal-string
+            literal-string
             float
             date
             integer
