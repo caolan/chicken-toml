@@ -54,6 +54,16 @@
             "       fox jumps over \\\n"
             "       the lazy dog.\\\n"
             "       \"\"\"")))
+  (test "trimmed whitespace, multiple newlines escaped"
+        '((str . "The quick brown fox jumps over the lazy dog."))
+        (read-toml
+          (string-append
+            "str = \"\"\"\n"
+            "The quick brown \\\n"
+            "\n"
+            "\n"
+            "  fox jumps over \\\n"
+            "      the lazy dog.\"\"\"\n")))
   (test "multi-line basic string with unicode"
         '((str . "中国"))
         (read-toml "str = \"\"\"\n中国\\\n\"\"\"\n")))
