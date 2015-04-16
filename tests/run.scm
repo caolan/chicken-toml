@@ -240,7 +240,13 @@
         (insert-normal-table
           '((foo . #(())))
           '(foo baz)
-          '((qux . 456)))))
+          '((qux . 456))))
+  (test "insert parent after child"
+        '((a . ((b . ((foo . "bar"))) (num . 123))))
+        (insert-normal-table
+          '((a . ((b . ((foo . "bar"))))))
+          '(a)
+          '((num . 123)))))
 
 (test-group "tables"
   (test "empty table"
@@ -314,8 +320,8 @@
             "[a.b]\n"
             "c = 2\n")))
   (test "implicit child table followed by explicit parent table"
-        '((a . ((better . 43)
-                (b . ((c . ((answer . 42))))))))
+        '((a . ((b . ((c . ((answer . 42)))))
+                (better . 43))))
         (read-toml
           (string-append
             "[a.b.c]\n"

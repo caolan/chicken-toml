@@ -943,7 +943,23 @@
 (define insert-normal-table
   (table-inserter
     (lambda (parent properties)
-      (and (not parent) properties))))
+      ;;(printf "insert-normal-table: ~S ~S~n" parent properties)
+      (cond
+        ;; table does not currently exist here
+        ((not parent) properties)
+        ;; table already created by child
+        ((and (pair? parent)
+              (every (lambda (x) (and (pair? x) (pair? (cdr x)))) parent))
+         ;; merge table properties
+         (let loop ((target (reverse parent))
+                    (source properties))
+           (cond
+             ((null? source) (reverse target)) ;; finished merge
+             ((assoc (caar source) target) #f) ;; conflicting property
+             (else (loop (cons (car source) target)
+                         (cdr source))))))
+        ;; conflicting table
+        (else #f)))))
 
 ;; inserts array table into document
 (define insert-array-table
