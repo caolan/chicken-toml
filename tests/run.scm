@@ -2,10 +2,7 @@
 (import scheme)
 (import toml)
 
-(use test utils posix medea rfc3339)
-
-(define example-json (read-all "./tests/fixtures/example.json"))
-(define example-toml (read-all "./tests/fixtures/example.toml"))
+(use test utils posix medea rfc3339 alist-lib)
 
 (test-group "comment"
   (test "comment"
@@ -35,8 +32,8 @@
         '((str . "escaped \t tab"))
         (read-toml "str = \"escaped \\t tab\"\n"))
   (test "basic string with unicode"
-        '((str . "Name: José"))
-        (read-toml "str = \"Name: Jos\\u00E9\"\n")))
+        '((str . "中国"))
+        (read-toml "str = \"中国\"\n")))
 
 (test-group "multi-line basic strings"
   (test "multi-line basic string"
@@ -50,15 +47,23 @@
             "       The quick brown \\\n"
             "       fox jumps over \\\n"
             "       the lazy dog.\\\n"
-            "       \"\"\""))))
+            "       \"\"\"")))
+  (test "multi-line basic string with unicode"
+        '((str . "中国"))
+        (read-toml "str = \"\"\"\n中国\\\n\"\"\"\n")))
 
 (test-group "literal strings"
   (test "literal string"
         '((winpath . "C:\\Users\\nodejs\\templates"))
         (read-toml "winpath = 'C:\\Users\\nodejs\\templates'"))
+  (test "literal string with unicode"
+        '((str . "中国"))
+        (read-toml "str = '中国'\n"))
   (test "literal string with double quotes"
         '((quoted . "Tom \"Dubs\" Preston-Werner"))
-        (read-toml "quoted = 'Tom \"Dubs\" Preston-Werner'\n"))
+        (read-toml "quoted = 'Tom \"Dubs\" Preston-Werner'\n")))
+
+(test-group "multi-line literal strings"
   (test "multi-line regex example"
         '((regex2 . "I [dw]on't need \\d{2} apples"))
         (read-toml "regex2 = '''I [dw]on't need \\d{2} apples'''"))
@@ -75,7 +80,10 @@
             "trimmed in raw strings.\n"
             "   All other whitespace\n"
             "   is preserved.\n"
-            "'''\n"))))
+            "'''\n")))
+  (test "multi-line literal string with unicode"
+        '((str . "中国"))
+        (read-toml "str = '''\n中国'''\n")))
 
 (test-group "integers"
   (test "integer"
@@ -408,9 +416,21 @@
             "           { x = 7, y = 8, z = 9 },\n"
             "           { x = 2, y = 4, z = 8 } ]\n"))))
 
-;(test-group "example"
-;  (test (read-json example-json)
-;        (read-toml example-toml))
-;  )
+(test-group "examples"
+  (begin
+    (define example-json (read-all "./tests/fixtures/example.json"))
+    (define example-toml (read-all "./tests/fixtures/example.toml"))
+    (let* ((expected (read-json example-json))
+           (owner (assoc 'owner expected))
+           (dob (assoc 'dob (cdr owner))))
+      ;; convert JSON date string to RFC3339 date record for comparison
+      (set-cdr! dob (string->rfc3339 (cdr dob)))
+      (test "example" expected (read-toml example-toml))))
+  (begin
+    (define hard-example-json (read-all "./tests/fixtures/hard_example.json"))
+    (define hard-example-toml (read-all "./tests/fixtures/hard_example.toml"))
+    (test "hard_example"
+          (read-json hard-example-json)
+          (read-toml hard-example-toml))))
 
 (test-exit)

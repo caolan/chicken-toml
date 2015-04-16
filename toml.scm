@@ -60,7 +60,7 @@
 (module toml (read-toml insert-normal-table insert-array-table)
 
 (import scheme chicken)
-(use comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib)
+(use comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras)
 
 ;; Some convenience functions for our implementation:
 
@@ -184,11 +184,8 @@
           (result (##sys#char->utf8-string (integer->char code)))
           fail)))))
 
-(define char-set:graphic-and-blank
-  (char-set-union char-set:graphic char-set:blank))
-
 (define char
-  (any-of (none-of* (is #\") (is #\\) (in char-set:graphic-and-blank))
+  (any-of (none-of* (is #\") (is #\\) toml-newline item)
           (preceded-by (is #\\) (any-of escape unicode))))
 
 (define basic-string
@@ -280,7 +277,7 @@
     (is #\')
     (as-string
       (one-or-more
-        (none-of* (is #\') (in char-set:graphic-and-blank))))
+        (none-of* (is #\') toml-newline item)))
     (is #\')))
 
 ; Since there is no escaping, there is no way to write a single quote inside a
@@ -307,7 +304,7 @@
 (define multi-line-literal-string
   (enclosed-by
     (sequence (char-seq "'''") (maybe toml-newline))
-    (as-string (one-or-more (none-of* (char-seq "'''") (in char-set:printing))))
+    (as-string (one-or-more (none-of* (char-seq "'''") item)))
     (char-seq "'''")))
 
 ; Integer
