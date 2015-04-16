@@ -2,7 +2,7 @@
 (import scheme)
 (import toml)
 
-(use test utils posix medea rfc3339 alist-lib)
+(use test utils posix medea rfc3339)
 
 (test-group "comment"
   (test "comment"
