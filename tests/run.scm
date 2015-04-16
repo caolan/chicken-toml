@@ -258,6 +258,9 @@
   (test "repeated keys should not parse"
         #f
         (read-toml "foo = 123\nfoo = 456\n"))
+  (test "key equals without a space"
+        '((foo . 123))
+        (read-toml "foo=123"))
   (test "repeated table names should not parse"
         #f
         (read-toml "[table]\nprop = 'val'\n[table]\nprop2 = 'val2'\n"))
