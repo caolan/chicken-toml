@@ -664,7 +664,7 @@
 
 (define key-value
   (as-pair key (preceded-by
-                 (sequence whitespaces (is #\=) whitespaces)
+                 (sequence (maybe whitespaces) (is #\=) (maybe whitespaces))
                  value)))
 
 (define table-name
