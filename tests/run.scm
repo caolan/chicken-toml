@@ -298,6 +298,16 @@
             "\n"
             "[a.b]\n"
             "c = 2\n")))
+  (test "implicit child table followed by explicit parent table"
+        '((a . ((better . 43)
+                (b . ((c . ((answer . 42))))))))
+        (read-toml
+          (string-append
+            "[a.b.c]\n"
+            "answer = 42\n"
+            "\n"
+            "[a]\n"
+            "better = 43\n")))
   (test "table name [] should not parse" #f (read-toml "[]"))
   (test "table name [a.] should not parse" #f (read-toml "[a.]"))
   (test "table name [a..b] should not parse" #f (read-toml "[a..b]"))
