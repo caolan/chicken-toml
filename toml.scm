@@ -60,7 +60,7 @@
 (module toml (read-toml insert-normal-table insert-array-table)
 
 (import scheme chicken)
-(use comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras)
+(use numbers comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras)
 
 ;; Some convenience functions for our implementation:
 
