@@ -2,7 +2,7 @@
 (import scheme)
 (import toml)
 
-(use test utils posix medea rfc3339)
+(use test utils posix medea rfc3339 numbers)
 
 (test-group "comment"
   (test "comment"
@@ -477,10 +477,96 @@
           (read-json hard-example-json)
           (read-toml hard-example-toml))))
 
-(test-group "encoder: tables"
-  (test "empty table"
-        "[table]\n"
-        (toml->string '((table . ())))))
+(test-group "encoder: basic strings"
+  (test "basic string"
+        "str = \"I'm a string\"\n"
+        (toml->string '((str . "I'm a string"))))
+  (test "empty basic string"
+        "str = \"\"\n"
+        (toml->string '((str . ""))))
+  (test "basic string escaped double quote"
+        "str = \"escaped \\\" double quote\"\n"
+        (toml->string '((str . "escaped \" double quote"))))
+  (test "basic string escaped tab character"
+        "str = \"escaped \\t tab\"\n"
+        (toml->string '((str . "escaped \t tab"))))
+  (test "basic string with unicode"
+        "str = \"中国\"\n"
+        (toml->string '((str . "中国")))))
 
+(test-group "encoder: integers"
+  (test "integer"
+        "int = 42\n" (toml->string '((int . 42))))
+  (test "zero"
+        "int = 0\n" (toml->string '((int . 0))))
+  (test "negative"
+        "int = -17\n" (toml->string '((int . -17)))))
+
+(test-group "encoder: floats"
+  (test "fractional"
+        "flt = 3.1415\n" (toml->string '((flt . 3.1415))))
+  (test "fractional negative"
+        "flt = -0.01\n" (toml->string '((flt . -0.01))))
+  (test "exponent positive"
+        "flt = 5e+22\n" (toml->string '((flt . 5e+22))))
+  (test "exponent negative"
+        "flt = -2e-20\n" (toml->string '((flt . -2E-20))))
+  (test "both"
+        "flt = 6.626e-34\n" (toml->string '((flt . 6.626e-34))))
+  (test "encoding exact scheme fraction"
+        "flt = 0.74\n" (toml->string '((flt . 3/4)))))
+
+(test-group "encoder: booleans"
+  (test "true"
+        "bool = true\n" (toml->string '((bool . #t))))
+  (test "false"
+        "bool = false\n" (toml->string '((bool . #f)))))
+
+(test-group "encoder: dates"
+  (test "RFC3339 example 1"
+        "date = 1979-05-27T07:32:00Z\n"
+        (toml->string
+          `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 0)))))
+  (test "RFC3339 example 2"
+        "date = 1979-05-27T07:32:00-07:00\n"
+        (toml->string
+          `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 (* 7 60 60))))))
+  (test "RFC3339 example 3"
+        "date = 1979-05-27T07:32:00.999999-07:00"\n)
+        (toml->string
+          `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60))))))
+
+(test-group "encoder: arrays"
+  (test "empty array"
+        "arr = []\n"
+        (toml->string '((arr . #()))))
+  (test "array of integers"
+        "arr = [ 1, 2, 3 ]\n"
+        (toml->string '((arr . #(1 2 3)))))
+  (test "array of strings"
+        "arr = [ \"red\", \"yellow\", \"green\" ]\n"
+        (toml->string '((arr . #("red" "yellow" "green")))))
+  (test "array of arrays"
+        "arr = [ [ 1, 2 ], [3, 4, 5] ]\n"
+        (toml->string '((arr . #(#(1 2) #(3 4 5))))))
+  (test "array of arrays of different types"
+        "arr = [ [ 1, 2 ], [\"a\", \"b\", \"c\"] ]\n"
+        (toml->string '((arr . #(#(1 2) #("a" "b" "c"))))))
+  ;(test "array of different types not allowed"
+  ;      #f
+  ;      (read-toml "arr = [ 1, 2.0 ]"))
+  )
+
+;(test-group "encoder: tables"
+;  (test "empty table"
+;        "[table]\n"
+;        (toml->string '((table . ()))))
+;  (test "table with properties"
+;        (string-append
+;          "[table]\n"
+;          "foo = 123\n"
+;          "bar = true\n")
+;        (toml->string '((table . ((foo . 123) (bar . #t))))))
+;  )
 
 (test-exit)
