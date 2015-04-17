@@ -1010,23 +1010,87 @@
 (define (read-toml input)
   (parse document (->parser-input input)))
 
-(define (write-table path data)
+(define char-set:encoded-string-escape
+  (list->char-set
+    '(#\backspace
+      #\tab
+      #\newline
+      #\page
+      #\return
+      #\"
+      #\\)))
+
+(define (display-encoded-string str)
+  (display "\"")
+  (let loop ((i 0))
+    (let ((j (string-index str char-set:encoded-string-escape i)))
+      (if j
+          (begin
+            (display (substring/shared str i j))
+            (display "\\")
+            (display (substring/shared str j (+ j 1)))
+            (loop (+ j 1)))
+          (display (substring/shared str i)))))
+  (display "\""))
+
+(define (display-indent indent)
+  (display (make-string (* indent 2) #\space)))
+
+(define (display-indented indent x)
+  (display-indent indent)
+  (display x))
+
+(define (display-encoded-array indent v)
+  (if (= (vector-length v) 0)
+    (display-indented indent "[]")
+    (begin
+      (display-indented indent "[\n")
+      (vector-for-each
+        (lambda (i x)
+          (display-value (+ indent 1) x #t)
+          (display ",\n"))
+        v)
+      (display-indented indent "]"))))
+
+(define (display-value indent value #!optional line-start)
+  (cond
+    ((number? value)
+     (if line-start (display-indent indent))
+     (if (and (not (integer? value)) (exact? value))
+       (display (exact->inexact value)) ;; eg. 3/4
+       (display value)))
+    ((vector? value) (display-encoded-array indent value))
+    ((string? value)
+     (if line-start (display-indent indent))
+     (display-encoded-string value))
+    ((boolean? value)
+     (if line-start (display-indent indent))
+     (display (if value "true" "false")))
+    ((rfc3339? value)
+     (if line-start (display-indent indent))
+     (display (rfc3339->string value)))))
+    ;((or (pair? value) (null? value))
+    ; (display "[" key "]")))
+
+(define (display-key key)
+  (display key))
+
+(define (display-key-value indent key value)
+  (display-indent indent)
+  (display-key key)
+  (display " = ")
+  (display-value indent value)
+  (newline))
+
+(define (display-table indent path data)
   (if (not (null? data)) ;; finished?
-    (let ((key (caar data))
-          (value (cdar data)))
-      (cond
-        ((number? value) (print key " = " value))
-        ;((string?
-        ;((boolean?
-        ;((vector?
-        ((or (pair? value) (null? value))
-         (print "[" key "]")))
-      (write-table path (cdr data)))))
+    (display-key-value indent (caar data) (cdar data))
+    (display-table indent path (cdr data))))
 
 (define (write-toml data #!optional (port (current-output-port)))
   (with-output-to-port port
     (lambda ()
-      (write-table '() data))))
+      (display-table 0 '() data))))
 
 (define (toml->string data)
   (with-output-to-string

@@ -487,9 +487,6 @@
   (test "basic string escaped double quote"
         "str = \"escaped \\\" double quote\"\n"
         (toml->string '((str . "escaped \" double quote"))))
-  (test "basic string escaped tab character"
-        "str = \"escaped \\t tab\"\n"
-        (toml->string '((str . "escaped \t tab"))))
   (test "basic string with unicode"
         "str = \"中国\"\n"
         (toml->string '((str . "中国")))))
@@ -514,7 +511,7 @@
   (test "both"
         "flt = 6.626e-34\n" (toml->string '((flt . 6.626e-34))))
   (test "encoding exact scheme fraction"
-        "flt = 0.74\n" (toml->string '((flt . 3/4)))))
+        "flt = 0.75\n" (toml->string '((flt . 3/4)))))
 
 (test-group "encoder: booleans"
   (test "true"
@@ -532,26 +529,59 @@
         (toml->string
           `((date . ,(make-rfc3339 1979 5 27 07 32 00 0 (* 7 60 60))))))
   (test "RFC3339 example 3"
-        "date = 1979-05-27T07:32:00.999999-07:00"\n)
+        "date = 1979-05-27T07:32:00.999999-07:00\n"
         (toml->string
-          `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60))))))
+          `((date . ,(make-rfc3339 1979 5 27 07 32 00 0.999999 (* 7 60 60)))))))
 
 (test-group "encoder: arrays"
   (test "empty array"
         "arr = []\n"
         (toml->string '((arr . #()))))
   (test "array of integers"
-        "arr = [ 1, 2, 3 ]\n"
+        (string-append
+          "arr = [\n"
+          "  1,\n"
+          "  2,\n"
+          "  3,\n"
+          "]\n")
         (toml->string '((arr . #(1 2 3)))))
   (test "array of strings"
-        "arr = [ \"red\", \"yellow\", \"green\" ]\n"
+        (string-append
+          "arr = [\n"
+          "  \"red\",\n"
+          "  \"yellow\",\n"
+          "  \"green\",\n"
+          "]\n")
         (toml->string '((arr . #("red" "yellow" "green")))))
   (test "array of arrays"
-        "arr = [ [ 1, 2 ], [3, 4, 5] ]\n"
+        (string-append
+          "arr = [\n"
+          "  [\n"
+          "    1,\n"
+          "    2,\n"
+          "  ],\n"
+          "  [\n"
+          "    3,\n"
+          "    4,\n"
+          "    5,\n"
+          "  ],\n"
+          "]\n")
         (toml->string '((arr . #(#(1 2) #(3 4 5))))))
   (test "array of arrays of different types"
-        "arr = [ [ 1, 2 ], [\"a\", \"b\", \"c\"] ]\n"
+        (string-append
+          "arr = [\n"
+          "  [\n"
+          "    1,\n"
+          "    2,\n"
+          "  ],\n"
+          "  [\n"
+          "    \"a\",\n"
+          "    \"b\",\n"
+          "    \"c\",\n"
+          "  ],\n"
+          "]\n")
         (toml->string '((arr . #(#(1 2) #("a" "b" "c"))))))
+  ;; NOTE: medea Errors on unsupported data types
   ;(test "array of different types not allowed"
   ;      #f
   ;      (read-toml "arr = [ 1, 2.0 ]"))
