@@ -8,6 +8,9 @@
 
 (use numbers medea rfc3339 vector-lib)
 
+;; so the long float test works
+(flonum-print-precision 16)
+
 ;; JSON encoding
 ;;
 ;; The following JSON encoding applies equally to both encoders and decoders.
