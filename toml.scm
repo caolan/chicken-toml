@@ -244,7 +244,10 @@
 ; ```
 
 (define escaped-whitespace
-  (bind (preceded-by (is #\\) toml-newline (zero-or-more toml-whitespace))
+  (bind (preceded-by
+          (is #\\)
+          toml-newline
+          (zero-or-more (any-of toml-whitespace toml-newline)))
         (lambda (x) (result ""))))
 
 (define multi-line-basic-string
