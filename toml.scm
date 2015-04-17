@@ -1059,7 +1059,8 @@
      (if (and (not (integer? value)) (exact? value))
        (display (exact->inexact value)) ;; eg. 3/4
        (display value)))
-    ((vector? value) (display-encoded-array indent value))
+    ((vector? value)
+     (display-encoded-array indent value))
     ((string? value)
      (if line-start (display-indent indent))
      (display-encoded-string value))
@@ -1070,7 +1071,7 @@
      (if line-start (display-indent indent))
      (display (rfc3339->string value)))))
     ;((or (pair? value) (null? value))
-    ; (display "[" key "]")))
+    ; (display-table indent () value))))
 
 (define (display-key key)
   (display key))
@@ -1082,10 +1083,22 @@
   (display-value indent value)
   (newline))
 
+(define (display-pair indent path pair)
+  (cond
+    ((or (null? (cdr pair)) (pair? (cdr pair)))
+     (print "[" (car pair) "]")
+     (display-table
+       indent
+       (append path (list (car pair)))
+       (cdr pair)))
+    (else
+      (display-key-value
+        indent
+        (car pair)
+        (cdr pair)))))
+
 (define (display-table indent path data)
-  (if (not (null? data)) ;; finished?
-    (display-key-value indent (caar data) (cdar data))
-    (display-table indent path (cdr data))))
+  (map (cut display-pair indent path <>) data))
 
 (define (write-toml data #!optional (port (current-output-port)))
   (with-output-to-port port

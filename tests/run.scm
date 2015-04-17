@@ -581,22 +581,22 @@
           "  ],\n"
           "]\n")
         (toml->string '((arr . #(#(1 2) #("a" "b" "c"))))))
-  ;; NOTE: medea Errors on unsupported data types
+  ;; TODO: Error on unsupported data types
   ;(test "array of different types not allowed"
   ;      #f
   ;      (read-toml "arr = [ 1, 2.0 ]"))
   )
 
-;(test-group "encoder: tables"
-;  (test "empty table"
-;        "[table]\n"
-;        (toml->string '((table . ()))))
-;  (test "table with properties"
-;        (string-append
-;          "[table]\n"
-;          "foo = 123\n"
-;          "bar = true\n")
-;        (toml->string '((table . ((foo . 123) (bar . #t))))))
-;  )
+(test-group "encoder: tables"
+  (test "empty table"
+        "[table]\n"
+        (toml->string '((table . ()))))
+  (test "table with properties"
+        (string-append
+          "[table]\n"
+          "foo = 123\n"
+          "bar = true\n")
+        (toml->string '((table . ((foo . 123) (bar . #t))))))
+  )
 
 (test-exit)
