@@ -477,4 +477,10 @@
           (read-json hard-example-json)
           (read-toml hard-example-toml))))
 
+(test-group "encoder: tables"
+  (test "empty table"
+        "[table]\n"
+        (toml->string '((table . ())))))
+
+
 (test-exit)

@@ -57,10 +57,15 @@
 ; ]
 ; ```
 
-(module toml (read-toml insert-normal-table insert-array-table)
+(module toml
+
+(read-toml
+ toml->string
+ insert-normal-table
+ insert-array-table)
 
 (import scheme chicken)
-(use numbers comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras)
+(use numbers comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras ports)
 
 ;; Some convenience functions for our implementation:
 
@@ -488,7 +493,7 @@
     ((number? v) (if (and (exact? v) (integer? v)) 'integer 'float))
     ((boolean? v) 'boolean)
     ((vector? v) 'array)
-    ((list? v) 'table)))
+    ((pair? v) 'table)))
 
 (define (same-types? lst)
   (or (null? lst)
@@ -1004,5 +1009,28 @@
 
 (define (read-toml input)
   (parse document (->parser-input input)))
+
+(define (write-table path data)
+  (if (not (null? data)) ;; finished?
+    (let ((key (caar data))
+          (value (cdar data)))
+      (cond
+        ((number? value) (print key " = " value))
+        ;((string?
+        ;((boolean?
+        ;((vector?
+        ((or (pair? value) (null? value))
+         (print "[" key "]")))
+      (write-table path (cdr data)))))
+
+(define (write-toml data #!optional (port (current-output-port)))
+  (with-output-to-port port
+    (lambda ()
+      (write-table '() data))))
+
+(define (toml->string data)
+  (with-output-to-string
+    (lambda ()
+      (write-toml data))))
 
 )
