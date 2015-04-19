@@ -1,6 +1,7 @@
 #!/usr/bin/csi -s
 
 ;; for use with https://github.com/BurntSushi/toml-test
+;; $ toml-test ./tests/toml-test-decoder.scm
 
 (load-relative "../toml.scm")
 (import scheme)
