@@ -659,4 +659,14 @@
   ;          "[a.b]\n"
   ;          "c = 2\n")))
 
+(test-group "encoder: examples"
+  (begin
+    (let* ((raw (read-all "./tests/fixtures/example.toml"))
+           (parsed (read-toml raw)))
+    (test "example" parsed (read-toml (toml->string parsed)))))
+  (begin
+    (let* ((raw (read-all "./tests/fixtures/hard_example.toml"))
+           (parsed (read-toml raw)))
+    (test "hard_example" parsed (read-toml (toml->string parsed))))))
+
 (test-exit)
