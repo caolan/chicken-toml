@@ -484,6 +484,9 @@
   (test "basic string escaped double quote"
         "str = \"escaped \\\" double quote\"\n"
         (toml->string '((str . "escaped \" double quote"))))
+  (test "basic string escaped newline"
+        "str = \"escaped \\n newline\"\n"
+        (toml->string '((str . "escaped \n newline"))))
   (test "basic string with unicode"
         "str = \"中国\"\n"
         (toml->string '((str . "中国")))))
@@ -636,6 +639,22 @@
           "[parent.\"foo.bar\"]\n"
           "baz = 123\n")
         (toml->string '((parent . ((foo.bar . ((baz . 123))))))))
+  (test "spacing between tables"
+        (string-append
+          "[foo]\n"
+          "a = 1\n"
+          "\n"
+          "[bar]\n"
+          "b = 2\n"
+          "\n"
+          "[[qux]]\n"
+          "c = 3\n"
+          "\n"
+          "[[qux]]\n"
+          "c = 4\n")
+        (toml->string '((foo . ((a . 1)))
+                        (bar . ((b . 2)))
+                        (qux . #(((c . 3)) ((c . 4)))))))
   )
   ;(test "repeated keys should not parse"
   ;      #f

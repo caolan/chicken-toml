@@ -155,18 +155,27 @@
 (define char-set:toml-escape
   (string->char-set "btnfr\"\\"))
 
+(define escape-codes
+  '((#\b . #\backspace)
+    (#\t . #\tab)
+    (#\n . #\newline)
+    (#\f . #\page)
+    (#\r . #\return)
+    (#\" . #\")
+    (#\\ . #\\)))
+
+(define (escape-code->char x)
+  (and-let* ((esc (assq x escape-codes)))
+    (cdr esc)))
+
+(define (char->escape-code x)
+  (and-let* ((esc (find (lambda (pair) (eq? (cdr pair) x)) escape-codes)))
+    (car esc)))
+
 (define escape
   (bind (in char-set:toml-escape)
         (lambda (x)
-          (result
-            (case x
-              ((#\b) #\backspace)
-              ((#\t) #\tab)
-              ((#\n) #\newline)
-              ((#\f) #\page)
-              ((#\r) #\return)
-              ((#\") #\")
-              ((#\\) #\\))))))
+          (result (escape-code->char x)))))
 
 ; Any Unicode character may be escaped with the `\uXXXX` or `\UXXXXXXXX` forms.
 ; The escape codes must be valid Unicode [scalar values](http://unicode.org/glossary/#unicode_scalar_value).
@@ -1029,7 +1038,7 @@
           (begin
             (display (substring/shared str i j))
             (display "\\")
-            (display (substring/shared str j (+ j 1)))
+            (display (char->escape-code (string-ref str j)))
             (loop (+ j 1)))
           (display (substring/shared str i)))))
   (display "\""))
@@ -1126,20 +1135,24 @@
     data))
 
 (define (display-subtables indent path data)
-  (for-each
-    (lambda (x)
-      (cond
-        ((table? (cdr x))
-         (display-table
-           indent
-           (append path (list (car x)))
-           (cdr x)))
-        ((array-of-tables? (cdr x))
-         (display-array-of-tables
-           indent
-           (append path (list (car x)))
-           (cdr x)))))
-    data))
+  (let ((len (length data)))
+    (let loop ((i 0) (data data))
+      (if (not (null? data))
+        (let ((x (car data)))
+          (cond
+            ((table? (cdr x))
+             (display-table
+               indent
+               (append path (list (car x)))
+               (cdr x))
+             (if (< i (- len 1)) (newline)))
+            ((array-of-tables? (cdr x))
+             (display-array-of-tables
+               indent
+               (append path (list (car x)))
+               (cdr x))
+             (if (< i (- len 1)) (newline))))
+          (loop (+ i 1) (cdr data)))))))
 
 (define (display-table indent path data)
   (if (or (null? data) (contains-non-table-props? data))
@@ -1149,7 +1162,7 @@
           (display-table-name path)
           (newline)))
       (display-table-properties indent path data)
-      (if (contains-table-props? data)
+      (if (and (not (null? path)) (contains-table-props? data))
         (newline))))
   (display-subtables indent path data))
 
