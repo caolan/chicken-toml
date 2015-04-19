@@ -631,15 +631,12 @@
           "[\"foo bar\"]\n"
           "baz = 123\n")
         (toml->string '((|foo bar| . ((baz . 123))))))
-  (test "partially quoted table name"
+  (test "nested and quoted table name"
         (string-append
-          "[foo.\"bar.baz\"]\n"
-          "qux = 123\n")
-        (toml->string '((foo . ((|bar.baz| . ((qux . 123))))))))
+          "[parent.\"foo.bar\"]\n"
+          "baz = 123\n")
+        (toml->string '((parent . ((foo.bar . ((baz . 123))))))))
   )
-  ;(test "nested and quoted table name"
-  ;      '((parent . ((foo.bar . ((baz . 123))))))
-  ;      (read-toml "[parent.\"foo.bar\"]\nbaz = 123\n"))
   ;(test "repeated keys should not parse"
   ;      #f
   ;      (read-toml "foo = 123\nfoo = 456\n"))

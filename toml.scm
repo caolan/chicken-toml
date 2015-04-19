@@ -1103,38 +1103,68 @@
                        (lambda () (display-key x))))
                    path)))
     (display (string-join full "."))
-    (display "]")
-    (newline)))
+    (display "]")))
+
+(define (display-array-table-name path)
+  (display "[")
+  (display-table-name path)
+  (display "]"))
 
 (define (table? x)
   (or (null? x) (pair? x)))
 
+(define (array-of-tables? x)
+  (and (vector? x)
+       (> (vector-length x) 0)
+       (table? (vector-ref x 0))))
+
 (define (display-table-properties indent path data)
   (for-each
     (lambda (x)
-      (if (not (table? (cdr x)))
+      (if (not (or (table? (cdr x)) (array-of-tables? (cdr x))))
         (display-key-value indent (car x) (cdr x))))
     data))
 
 (define (display-subtables indent path data)
   (for-each
     (lambda (x)
-      (if (or (table? (cdr x)))
-        (display-table
-          indent
-          (append path (list (car x)))
-          (cdr x))))
+      (cond
+        ((table? (cdr x))
+         (display-table
+           indent
+           (append path (list (car x)))
+           (cdr x)))
+        ((array-of-tables? (cdr x))
+         (display-array-of-tables
+           indent
+           (append path (list (car x)))
+           (cdr x)))))
     data))
 
 (define (display-table indent path data)
   (if (or (null? data) (contains-non-table-props? data))
     (begin
       (if (not (null? path))
-        (display-table-name path))
+        (begin
+          (display-table-name path)
+          (newline)))
       (display-table-properties indent path data)
       (if (contains-table-props? data)
         (newline))))
   (display-subtables indent path data))
+
+(define (display-array-of-tables indent path data)
+  (vector-for-each
+    (lambda (i x)
+      (display-array-table-name path)
+      (newline)
+      (display-table-properties indent path x)
+      (if (contains-table-props? x)
+        (newline))
+      (display-subtables indent path x)
+      (if (< i (- (vector-length data) 1))
+        (newline)))
+    data))
 
 (define (write-toml data #!optional (port (current-output-port)))
   (with-output-to-port port
