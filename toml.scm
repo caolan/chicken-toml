@@ -645,11 +645,12 @@
 ;  = "no key name" # not allowed
 ; ```
 
+(define char-set:bare-key
+  (char-set-union char-set:letter+digit
+                  (list->char-set (list #\_ #\-))))
+
 (define bare-key
-  (as-symbol
-    (one-or-more (any-of (in char-set:letter+digit)
-                         (is #\_)
-                         (is #\-)))))
+  (as-symbol (one-or-more (in char-set:bare-key))))
 
 (define quoted-key
   (as-symbol basic-string))
@@ -1020,7 +1021,7 @@
       #\"
       #\\)))
 
-(define (display-encoded-string str)
+(define (display-string str)
   (display "\"")
   (let loop ((i 0))
     (let ((j (string-index str char-set:encoded-string-escape i)))
@@ -1040,7 +1041,7 @@
   (display-indent indent)
   (display x))
 
-(define (display-encoded-array indent v)
+(define (display-array indent v)
   (if (= (vector-length v) 0)
     (display-indented indent "[]")
     (begin
@@ -1060,10 +1061,10 @@
        (display (exact->inexact value)) ;; eg. 3/4
        (display value)))
     ((vector? value)
-     (display-encoded-array indent value))
+     (display-array indent value))
     ((string? value)
      (if line-start (display-indent indent))
-     (display-encoded-string value))
+     (display-string value))
     ((boolean? value)
      (if line-start (display-indent indent))
      (display (if value "true" "false")))
@@ -1073,9 +1074,6 @@
     ;((or (pair? value) (null? value))
     ; (display-table indent () value))))
 
-(define (display-key key)
-  (display key))
-
 (define (display-key-value indent key value)
   (display-indent indent)
   (display-key key)
@@ -1083,22 +1081,60 @@
   (display-value indent value)
   (newline))
 
-(define (display-pair indent path pair)
-  (cond
-    ((or (null? (cdr pair)) (pair? (cdr pair)))
-     (print "[" (car pair) "]")
-     (display-table
-       indent
-       (append path (list (car pair)))
-       (cdr pair)))
-    (else
-      (display-key-value
-        indent
-        (car pair)
-        (cdr pair)))))
+(define (contains-non-table-props? properties)
+  (any (lambda (x) (not (pair? (cdr x)))) properties))
+
+(define (contains-table-props? properties)
+  (any (lambda (x) (pair? (cdr x))) properties))
+
+(define (bare-key? str)
+  (string-every char-set:bare-key str))
+
+(define (display-key key)
+  (let ((keystr (symbol->string key)))
+    (if (bare-key? keystr)
+      (display keystr)
+      (display-string keystr))))
+
+(define (display-table-name path)
+  (display "[")
+  (let ((full (map (lambda (x)
+                     (with-output-to-string
+                       (lambda () (display-key x))))
+                   path)))
+    (display (string-join full "."))
+    (display "]")
+    (newline)))
+
+(define (table? x)
+  (or (null? x) (pair? x)))
+
+(define (display-table-properties indent path data)
+  (for-each
+    (lambda (x)
+      (if (not (table? (cdr x)))
+        (display-key-value indent (car x) (cdr x))))
+    data))
+
+(define (display-subtables indent path data)
+  (for-each
+    (lambda (x)
+      (if (or (table? (cdr x)))
+        (display-table
+          indent
+          (append path (list (car x)))
+          (cdr x))))
+    data))
 
 (define (display-table indent path data)
-  (map (cut display-pair indent path <>) data))
+  (if (or (null? data) (contains-non-table-props? data))
+    (begin
+      (if (not (null? path))
+        (display-table-name path))
+      (display-table-properties indent path data)
+      (if (contains-table-props? data)
+        (newline))))
+  (display-subtables indent path data))
 
 (define (write-toml data #!optional (port (current-output-port)))
   (with-output-to-port port

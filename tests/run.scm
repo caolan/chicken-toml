@@ -289,9 +289,6 @@
   (test "key equals without a space"
         '((foo . 123))
         (read-toml "foo=123"))
-  (test "repeated table names should not parse"
-        #f
-        (read-toml "[table]\nprop = 'val'\n[table]\nprop2 = 'val2'\n"))
   (test "nested tables with siblings on parent"
         '((foo . 123)
           (bar . ((baz . 456)
@@ -597,6 +594,72 @@
           "foo = 123\n"
           "bar = true\n")
         (toml->string '((table . ((foo . 123) (bar . #t))))))
+  (test "nested table with properties"
+        (string-append
+          "[a.b.c]\n"
+          "foo = 123\n"
+          "bar = true\n")
+        (toml->string '((a . ((b . ((c . ((foo . 123) (bar . #t))))))))))
+  (test "nested table with parent which has properties"
+        (string-append
+          "[a]\n"
+          "foo = 123\n"
+          "\n"
+          "[a.b.c]\n"
+          "bar = true\n")
+        (toml->string '((a . ((foo . 123) (b . ((c . ((bar . #t))))))))))
+  (test "array of tables"
+        (string-append
+          "[[a]]\n"
+          "foo = 123\n"
+          "\n"
+          "[[a]]\n"
+          "foo = 456\n"
+          "\n"
+          "[[a]]\n"
+          "foo = 789\n")
+        (toml->string '((a . #(((foo . 123))
+                               ((foo . 456))
+                               ((foo . 789)))))))
+  (test "table with quoted keys in key-value pairs"
+        (string-append
+          "[table]\n"
+          "\"my key\" = \"my value\"\n")
+        (toml->string '((table . ((|my key| . "my value"))))))
+  (test "quoted table name"
+        (string-append
+          "[\"foo bar\"]\n"
+          "baz = 123\n")
+        (toml->string '((|foo bar| . ((baz . 123))))))
+  (test "partially quoted table name"
+        (string-append
+          "[foo.\"bar.baz\"]\n"
+          "qux = 123\n")
+        (toml->string '((foo . ((|bar.baz| . ((qux . 123))))))))
   )
+  ;(test "nested and quoted table name"
+  ;      '((parent . ((foo.bar . ((baz . 123))))))
+  ;      (read-toml "[parent.\"foo.bar\"]\nbaz = 123\n"))
+  ;(test "repeated keys should not parse"
+  ;      #f
+  ;      (read-toml "foo = 123\nfoo = 456\n"))
+  ;(test "repeated table names should not parse"
+  ;      #f
+  ;      (read-toml
+  ;        (string-append
+  ;          "[a]\n"
+  ;          "b = 1\n"
+  ;          "\n"
+  ;          "[a]\n"
+  ;          "c = 2\n")))
+  ;(test "table name conflicting with property should not parse"
+  ;      #f
+  ;      (read-toml
+  ;        (string-append
+  ;          "[a]\n"
+  ;          "b = 1\n"
+  ;          "\n"
+  ;          "[a.b]\n"
+  ;          "c = 2\n")))
 
 (test-exit)
