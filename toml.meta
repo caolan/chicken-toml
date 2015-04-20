@@ -1,0 +1,6 @@
+((synopsis "A TOML parser built with comparse")
+ (author "Caolan McMahon")
+ (category parsing)
+ (license "BSD")
+ (needs numbers comparse rfc3339 vector-lib)
+ (test-depends test medea))

@@ -1,0 +1,9 @@
+(compile -O2 -d1 -s "toml.scm" -Iinclude -j "toml")
+(compile -O2 -d0 -s "toml.import.scm")
+(compile -O2 -d1 -c "toml.scm" -Iinclude -unit "toml" -o "toml-static.o")
+
+(install-extension
+  'toml
+  '("toml.so" "toml.import.so" "toml-static.o")
+  '((version "1.0.0")
+    (static "toml-static.o")))
