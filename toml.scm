@@ -65,7 +65,19 @@
  insert-array-table)
 
 (import scheme chicken)
-(use numbers comparse srfi-1 srfi-13 srfi-14 rfc3339 vector-lib extras ports)
+
+(use numbers
+     srfi-1
+     srfi-13
+     srfi-14
+     srfi-69
+     data-structures
+     ports
+     extras
+     comparse
+     rfc3339
+     vector-lib)
+     ;arrays)
 
 ;; Some convenience functions for our implementation:
 
@@ -1180,7 +1192,73 @@
         (newline)))
     data))
 
+(define (vector-homogenous? vec)
+  (call/cc (lambda (c)
+    (vector-fold
+      (lambda (i prev x)
+        (let ((t (toml-type x)))
+          (if (and prev (not (eq? (toml-type x) prev)))
+            (c #f))
+          t))
+      #f vec)
+    #t)))
+
+;; check that the data is suitable for encoding as TOML,
+;; Errors if the data is incompatible (OR: should it return two values,
+;; the result and an optional message string? becoming 'valid-toml?')
+(define (validate-toml data)
+  (define (path->string path)
+    (string-join (map ->string path) "."))
+
+  (define (error-at path msg)
+    (error (sprintf "~S at ~S" msg (path->string path))))
+
+  (let loop ((path '())
+             (data data))
+    (cond
+      ((pair? data)
+       (if (not (every pair? data))
+         (error-at path "Expected alist"))
+       (let ((h (alist->hash-table data)))
+         (if (not (= (length (hash-table-keys h)) (length data)))
+           (error-at path "Duplicate keys")))
+       (map (lambda (x)
+              (loop (append path (list (car x))) (cdr x)))
+            data))
+      ((vector? data)
+       ;; TODO: make sure vectors are homogenous
+       (if (not (vector-homogenous? data))
+         (error-at path "Array must be homogenous"))
+       (vector-for-each
+         (lambda (i x)
+           (loop (append path (list i)) x))
+         data))
+      ((or (null? data)
+           (string? data)
+           (number? data)
+           (boolean? data)
+           (rfc3339? data))
+       #t)
+      (else
+        (error-at path "Unsupported data type")))))
+
+  ;(cond
+  ;  ;; TODO!!! look into using 'arrays' module for improved toml array
+  ;  ;; perf and for sets (internal only, can convert to vectors and alists
+  ;  ;; later for return values)
+  ;  ;; http://api.call-cc.org/doc/arrays
+  ;  ;; also see hash-tables in srfi-69 (part of the standard chicken modules)
+  ;  ((pair? data)
+  ;   ;; only alists
+  ;   (if (not (all pair? data))
+  ;     (error "Expected alist")
+  ;;; TODO: - make sure there are no repeated keys in alists
+  ;;;       - make sure all values are of known type
+  ;;;       - make sure vectors are homogenous
+  ;#t)
+
 (define (write-toml data #!optional (port (current-output-port)))
+  (validate-toml data)
   (with-output-to-port port
     (lambda ()
       (display-table 0 '() data))))
