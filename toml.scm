@@ -1162,7 +1162,8 @@
           (display-table-name path)
           (newline)))
       (display-table-properties indent path data)
-      (if (and (not (null? path)) (contains-table-props? data))
+      (if (and (not (null? path))
+               (contains-table-props? data))
         (newline))))
   (display-subtables indent path data))
 

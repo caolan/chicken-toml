@@ -581,11 +581,8 @@
           "  ],\n"
           "]\n")
         (toml->string '((arr . #(#(1 2) #("a" "b" "c"))))))
-  ;; TODO: Error on unsupported data types
-  ;(test "array of different types not allowed"
-  ;      #f
-  ;      (read-toml "arr = [ 1, 2.0 ]"))
-  )
+  (test-error "array of different types not allowed"
+        (toml->string '((arr . #(1 2.0))))))
 
 (test-group "encoder: tables"
   (test "empty table"
@@ -655,28 +652,12 @@
         (toml->string '((foo . ((a . 1)))
                         (bar . ((b . 2)))
                         (qux . #(((c . 3)) ((c . 4)))))))
-  )
-  ;(test "repeated keys should not parse"
-  ;      #f
-  ;      (read-toml "foo = 123\nfoo = 456\n"))
-  ;(test "repeated table names should not parse"
-  ;      #f
-  ;      (read-toml
-  ;        (string-append
-  ;          "[a]\n"
-  ;          "b = 1\n"
-  ;          "\n"
-  ;          "[a]\n"
-  ;          "c = 2\n")))
-  ;(test "table name conflicting with property should not parse"
-  ;      #f
-  ;      (read-toml
-  ;        (string-append
-  ;          "[a]\n"
-  ;          "b = 1\n"
-  ;          "\n"
-  ;          "[a.b]\n"
-  ;          "c = 2\n")))
+  (test-error "repeated keys should not parse"
+        (toml->string '((foo . 123) (foo . 456))))
+  (test-error "repeated table names should not parse"
+        (toml->string '((a . ((b . 1))) (a . ((c . 2))))))
+  (test-error "table name conflicting with property should not parse"
+        (toml->string '((a . ((b . 1) (b . ((c . 2)))))))))
 
 (test-group "encoder: examples"
   (begin
