@@ -2,7 +2,7 @@
 (import scheme)
 (import toml)
 
-(use test utils posix medea rfc3339 numbers)
+(use test utils posix medea rfc3339 numbers data-structures)
 
 (test-group "comment"
   (test "comment"
@@ -652,12 +652,14 @@
         (toml->string '((foo . ((a . 1)))
                         (bar . ((b . 2)))
                         (qux . #(((c . 3)) ((c . 4)))))))
-  (test-error "repeated keys should not parse"
-        (toml->string '((foo . 123) (foo . 456))))
-  (test-error "repeated table names should not parse"
-        (toml->string '((a . ((b . 1))) (a . ((c . 2))))))
-  (test-error "table name conflicting with property should not parse"
-        (toml->string '((a . ((b . 1) (b . ((c . 2)))))))))
+  (test-error "repeated keys should not encode"
+    (toml->string '((foo . 123) (foo . 456))))
+  (test-error "repeated table names should not encode"
+    (toml->string '((a . ((b . 1))) (a . ((c . 2))))))
+  (test-error "table name conflicting with property should not encode"
+    (toml->string '((a . ((b . 1) (b . ((c . 2))))))))
+  (test-error "table with unsupported property value should not encode"
+    (toml->string '((a . (make-hash-table))))))
 
 (test-group "encoder: examples"
   (begin

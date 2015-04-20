@@ -59,13 +59,15 @@
 
 (module toml
 
+;; exports
 (read-toml
+ write-toml
  toml->string
  insert-normal-table
  insert-array-table)
 
+;; dependencies
 (import scheme chicken)
-
 (use numbers
      srfi-1
      srfi-13
@@ -77,7 +79,6 @@
      comparse
      rfc3339
      vector-lib)
-     ;arrays)
 
 ;; Some convenience functions for our implementation:
 
@@ -177,8 +178,7 @@
     (#\\ . #\\)))
 
 (define (escape-code->char x)
-  (and-let* ((esc (assq x escape-codes)))
-    (cdr esc)))
+  (alist-ref x escape-codes))
 
 (define (char->escape-code x)
   (and-let* ((esc (find (lambda (pair) (eq? (cdr pair) x)) escape-codes)))
@@ -1092,8 +1092,6 @@
     ((rfc3339? value)
      (if line-start (display-indent indent))
      (display (rfc3339->string value)))))
-    ;((or (pair? value) (null? value))
-    ; (display-table indent () value))))
 
 (define (display-key-value indent key value)
   (display-indent indent)
@@ -1204,8 +1202,7 @@
     #t)))
 
 ;; check that the data is suitable for encoding as TOML,
-;; Errors if the data is incompatible (OR: should it return two values,
-;; the result and an optional message string? becoming 'valid-toml?')
+;; Errors if the data is incompatible
 (define (validate-toml data)
   (define (path->string path)
     (string-join (map ->string path) "."))
@@ -1241,21 +1238,6 @@
        #t)
       (else
         (error-at path "Unsupported data type")))))
-
-  ;(cond
-  ;  ;; TODO!!! look into using 'arrays' module for improved toml array
-  ;  ;; perf and for sets (internal only, can convert to vectors and alists
-  ;  ;; later for return values)
-  ;  ;; http://api.call-cc.org/doc/arrays
-  ;  ;; also see hash-tables in srfi-69 (part of the standard chicken modules)
-  ;  ((pair? data)
-  ;   ;; only alists
-  ;   (if (not (all pair? data))
-  ;     (error "Expected alist")
-  ;;; TODO: - make sure there are no repeated keys in alists
-  ;;;       - make sure all values are of known type
-  ;;;       - make sure vectors are homogenous
-  ;#t)
 
 (define (write-toml data #!optional (port (current-output-port)))
   (validate-toml data)
