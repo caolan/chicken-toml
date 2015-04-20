@@ -973,7 +973,6 @@
 (define insert-normal-table
   (table-inserter
     (lambda (parent properties)
-      ;;(printf "insert-normal-table: ~S ~S~n" parent properties)
       (cond
         ;; table does not currently exist here
         ((not parent) properties)
