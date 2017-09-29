@@ -5,5 +5,5 @@
 (install-extension
   'toml
   '("toml.so" "toml.import.so" "toml-static.o")
-  '((version "1.0.0")
+  '((version "1.0.1")
     (static "toml-static.o")))

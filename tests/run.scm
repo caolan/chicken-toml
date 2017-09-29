@@ -459,8 +459,8 @@
 
 (test-group "examples"
   (begin
-    (define example-json (read-all "./tests/fixtures/example.json"))
-    (define example-toml (read-all "./tests/fixtures/example.toml"))
+    (define example-json (read-all "./fixtures/example.json"))
+    (define example-toml (read-all "./fixtures/example.toml"))
     (let* ((expected (read-json example-json))
            (owner (assoc 'owner expected))
            (dob (assoc 'dob (cdr owner))))
@@ -468,8 +468,8 @@
       (set-cdr! dob (string->rfc3339 (cdr dob)))
       (test "example" expected (read-toml example-toml))))
   (begin
-    (define hard-example-json (read-all "./tests/fixtures/hard_example.json"))
-    (define hard-example-toml (read-all "./tests/fixtures/hard_example.toml"))
+    (define hard-example-json (read-all "./fixtures/hard_example.json"))
+    (define hard-example-toml (read-all "./fixtures/hard_example.toml"))
     (test "hard_example"
           (read-json hard-example-json)
           (read-toml hard-example-toml))))
@@ -663,11 +663,11 @@
 
 (test-group "encoder: examples"
   (begin
-    (let* ((raw (read-all "./tests/fixtures/example.toml"))
+    (let* ((raw (read-all "./fixtures/example.toml"))
            (parsed (read-toml raw)))
     (test "example" parsed (read-toml (toml->string parsed)))))
   (begin
-    (let* ((raw (read-all "./tests/fixtures/hard_example.toml"))
+    (let* ((raw (read-all "./fixtures/hard_example.toml"))
            (parsed (read-toml raw)))
     (test "hard_example" parsed (read-toml (toml->string parsed))))))
 
