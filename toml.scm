@@ -66,19 +66,21 @@
  insert-normal-table
  insert-array-table)
 
+(import scheme)
+(import
+  chicken.base
+  chicken.port
+  chicken.format
+  chicken.string)
 ;; dependencies
-(import scheme chicken)
-(use numbers
-     srfi-1
-     srfi-13
-     srfi-14
-     srfi-69
-     data-structures
-     ports
-     extras
-     comparse
-     rfc3339
-     vector-lib)
+(import
+  srfi-1
+  srfi-13
+  srfi-14
+  srfi-69
+  comparse
+  rfc3339
+  vector-lib)
 
 ;; Some convenience functions for our implementation:
 

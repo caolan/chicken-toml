@@ -3,11 +3,11 @@
 ;; for use with https://github.com/BurntSushi/toml-test
 ;; $ toml-test ./tests/toml-test-decoder.scm
 
-(load-relative "../toml.scm")
+(include-relative "../toml.scm")
 (import scheme)
 (import toml)
 
-(use numbers medea rfc3339 vector-lib)
+(import medea rfc3339 vector-lib)
 
 ;; so the long float test works
 (flonum-print-precision 16)

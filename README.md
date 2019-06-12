@@ -3,7 +3,7 @@
 Built with [comparse](http://wiki.call-cc.org/eggref/4/comparse).
 
 ```scheme
-(use toml)
+(import toml)
 
 (read-toml string/input-port) ;; => data
 (write-toml data output-port)
